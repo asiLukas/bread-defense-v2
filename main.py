@@ -8,7 +8,7 @@ FPS = 60
 clock = pygame.time.Clock()
 
 player_group = pygame.sprite.GroupSingle()
-player = Player(640, 360, scale_factor=4)
+player = Player(640, 360, 2)
 player_group.add(player)
 
 while True:

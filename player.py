@@ -4,8 +4,7 @@ import os
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, scale_factor=None):
         super().__init__()
-        if scale_factor:
-            self.import_character_assets(scale_factor)
+        self.import_character_assets(scale_factor)
         
         # movement
         self.direction = pygame.math.Vector2(0, 0)
@@ -40,6 +39,8 @@ class Player(pygame.sprite.Sprite):
                     
                     # optional scale
                     w, h = image.get_size()
+                    if not scale:
+                        scale = 1
                     image = pygame.transform.scale(image, (int(w * scale), int(h * scale)))
                     
                     self.animations[animation].append(image)
@@ -61,6 +62,9 @@ class Player(pygame.sprite.Sprite):
 
     def get_status(self):
         if self.direction.x != 0:
+            # when switching from idle to run, make sure we reset index
+            if self.status != 'run':
+                self.frame_index = 0
             self.status = 'run'
         else:
             self.status = 'idle'
@@ -86,6 +90,7 @@ class Player(pygame.sprite.Sprite):
                 self.frame_index = 0
             self.last_update_time = current_time
 
+        print(self.frame_index, self.status)
         current_image = animation[self.frame_index]
         
         if not self.facing_right:
