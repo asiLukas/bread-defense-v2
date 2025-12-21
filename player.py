@@ -90,7 +90,6 @@ class Player(pygame.sprite.Sprite):
                 self.frame_index = 0
             self.last_update_time = current_time
 
-        print(self.frame_index, self.status)
         current_image = animation[self.frame_index]
         
         if not self.facing_right:
