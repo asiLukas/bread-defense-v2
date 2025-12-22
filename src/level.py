@@ -213,16 +213,12 @@ class Level:
         day = self.day_count
 
         # difficulty scaling
-        num_enemies = 4 + int(day * 1.5)
+        num_enemies = 4 + int(day * 2.5)
         health_mult = 1.0 + (day * 0.1)
         damage_mult = 1.0 + (day * 0.05)
 
         # enemy pool management
-        pool = ["enemy01", "enemy04"]
-        if day >= 5:
-            pool.extend(["enemy03", "enemy05"])  # fast/jumpers
-        if day >= 10:
-            pool.extend(["enemy02", "enemy06"])  # tanks
+        pool = ["enemy01", "enemy02", "enemy03", "enemy04", "enemy05", "enemy06"]
 
         for _ in range(num_enemies):
             variant = random.choice(pool)

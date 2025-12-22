@@ -41,16 +41,16 @@ class Player(pygame.sprite.Sprite):
         self.hit_time = 0
         self.is_dead = False
 
-        self.money = 40
+        self.money = 30
 
         # upgrades
         self.damage = 20
         self.weapon_level = 1
-        self.weapon_upgrade_cost = 60
+        self.weapon_upgrade_cost = 200
         self.regen_level = 0
-        self.regen_upgrade_cost = 50
+        self.regen_upgrade_cost = 150
         self.last_regen_time = 0
-        self.quick_heal_cost = 30
+        self.quick_heal_cost = 70
 
         # Shooting
         self.shoot_cooldown = 400
