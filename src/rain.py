@@ -8,8 +8,6 @@ class Rain:
         self.display_surface = surface
         self.width = surface.get_width()
         self.height = surface.get_height()
-
-        self.rain_surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
         self.drops = []
         self.create_drops()
 
@@ -39,14 +37,11 @@ class Rain:
                 drop[3] = random.randint(4, 9)
 
     def draw(self):
-        self.rain_surf.fill((0, 0, 0, 0))
-
         for drop in self.drops:
             x, y, length, _, color = drop
 
             start_pos = (x, int(y))
             end_pos = (x, int(y + length))
 
-            pygame.draw.line(self.rain_surf, color, start_pos, end_pos, 1)
-
-        self.display_surface.blit(self.rain_surf, (0, 0))
+            # Draw directly to the display surface
+            pygame.draw.line(self.display_surface, color, start_pos, end_pos, 1)
