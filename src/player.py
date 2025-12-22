@@ -8,6 +8,15 @@ class Player(pygame.sprite.Sprite):
         self.z = 2
         self.import_character_assets(scale_factor)
 
+        # Load bullet assets
+        self.bullet_surf = pygame.image.load(
+            os.path.join("assets", "bullet.png")
+        ).convert_alpha()
+        self.shoot_sound = pygame.mixer.Sound(
+            os.path.join("assets", "sound", "bullet_sound.wav")
+        )
+        self.shoot_sound.set_volume(0.4)
+
         self.hit_sound = pygame.mixer.Sound(os.path.join("assets", "sound", "hit.wav"))
         self.hit_sound.set_volume(0.5)
 
@@ -19,10 +28,9 @@ class Player(pygame.sprite.Sprite):
         self.gravity = 0.8
         self.jump_speed = -16
 
-        # NOTE GOD MODE
         # sprint & Stamina
         self.is_sprinting = False
-        self.max_stamina = 100000
+        self.max_stamina = 100
         self.current_stamina = self.max_stamina
 
         # health
@@ -32,6 +40,12 @@ class Player(pygame.sprite.Sprite):
         self.invincibility_duration = 1000  # 1 second of immunity after hit
         self.hit_time = 0
         self.is_dead = False
+
+        self.money = 100
+
+        # Shooting
+        self.shoot_cooldown = 400
+        self.last_shoot_time = 0
 
         # double tap logic
         self.last_tap_time = 0
@@ -81,7 +95,7 @@ class Player(pygame.sprite.Sprite):
             except FileNotFoundError:
                 print(f"Error: Folder not found at {full_path}")
 
-    def get_input(self):
+    def get_input(self, create_bullet_callback):
         if self.is_dead:
             return
         keys = pygame.key.get_pressed()
@@ -93,6 +107,18 @@ class Player(pygame.sprite.Sprite):
         if not keys[pygame.K_d] and not keys[pygame.K_a]:
             self.is_sprinting = False
             self.speed = self.walk_speed
+
+        # Shooting input
+        if keys[pygame.K_j]:
+            if current_time - self.last_shoot_time >= self.shoot_cooldown:
+                self.shoot_sound.play()
+                direction = 1 if self.facing_right else -1
+                # Offset bullet slightly to match player height
+                bullet_y = self.rect.centery + 10
+                create_bullet_callback(
+                    self.rect.centerx, bullet_y, direction, self.bullet_surf
+                )
+                self.last_shoot_time = current_time
 
         # double Tap Check
         if just_pressed_d:
@@ -126,7 +152,6 @@ class Player(pygame.sprite.Sprite):
             self.jump()
 
     def get_damage(self, amount):
-        return
         if not self.invincible and not self.is_dead:
             if self.hit_sound:
                 self.hit_sound.play()
@@ -173,23 +198,26 @@ class Player(pygame.sprite.Sprite):
         self.rect.x += self.direction.x * self.speed
 
         for tile in tiles:
-            if tile.rect.colliderect(self.rect):
-                if self.direction.x > 0:  # right
-                    self.rect.right = tile.rect.left
-                elif self.direction.x < 0:  # left
-                    self.rect.left = tile.rect.right
+            # Check is_solid property (default to True if attribute missing)
+            if getattr(tile, "is_solid", True):
+                if tile.rect.colliderect(self.rect):
+                    if self.direction.x > 0:  # right
+                        self.rect.right = tile.rect.left
+                    elif self.direction.x < 0:  # left
+                        self.rect.left = tile.rect.right
 
     def check_vertical_collisions(self, tiles):
         self.apply_gravity()
 
         for tile in tiles:
-            if tile.rect.colliderect(self.rect):
-                if self.direction.y > 0:  # falling
-                    self.rect.bottom = tile.rect.top
-                    self.direction.y = 0
-                elif self.direction.y < 0:  # ceiling
-                    self.rect.top = tile.rect.bottom
-                    self.direction.y = 0
+            if getattr(tile, "is_solid", True):
+                if tile.rect.colliderect(self.rect):
+                    if self.direction.y > 0:  # falling
+                        self.rect.bottom = tile.rect.top
+                        self.direction.y = 0
+                    elif self.direction.y < 0:  # ceiling
+                        self.rect.top = tile.rect.bottom
+                        self.direction.y = 0
 
     def get_status(self):
         if self.direction.x != 0:
@@ -268,8 +296,8 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.rect(surface, st_color, st_fill_rect)
         pygame.draw.rect(surface, (0, 0, 0), st_bg_rect, 1)
 
-    def update(self, tiles):
-        self.get_input()
+    def update(self, tiles, create_bullet_callback):
+        self.get_input(create_bullet_callback)
         self.manage_stamina()
         self.invincibility_timer()
         self.get_status()

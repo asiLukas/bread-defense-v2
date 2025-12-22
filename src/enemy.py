@@ -3,7 +3,7 @@ import os
 
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, enemy_variant="enemy_01", scale_factor=None):
+    def __init__(self, pos_x, pos_y, enemy_variant="enemy01", scale_factor=None):
         super().__init__()
         self.z = 1
         self.import_assets(enemy_variant, scale_factor)
@@ -17,12 +17,49 @@ class Enemy(pygame.sprite.Sprite):
         self.direction = pygame.math.Vector2(1, 0)
         self.gravity = 0.8
 
-        # AI stats
+        # defaults
         self.walk_speed = 2
         self.chase_speed = 4
+        self.max_health = 100
+        self.damage = 10
         self.jump_speed = -16
-        self.speed = self.walk_speed
         self.sight_range = 400
+        self.is_jumping_type = False
+
+        if "enemy01" in enemy_variant:
+            self.walk_speed = 5
+            self.chase_speed = 8
+            self.max_health = 30
+            self.damage = 5
+        elif "enemy02" in enemy_variant:
+            self.walk_speed = 2
+            self.chase_speed = 3
+            self.max_health = 150
+            self.damage = 25
+        elif "enemy03" in enemy_variant:
+            self.walk_speed = 3
+            self.chase_speed = 5
+            self.max_health = 100
+            self.damage = 15
+        elif "enemy04" in enemy_variant:
+            self.walk_speed = 4
+            self.chase_speed = 7
+            self.max_health = 100
+            self.damage = 15
+        elif "enemy05" in enemy_variant:
+            self.walk_speed = 3
+            self.chase_speed = 5
+            self.max_health = 100
+            self.damage = 15
+            self.is_jumping_type = True
+        elif "enemy06" in enemy_variant:
+            self.walk_speed = 1
+            self.chase_speed = 2
+            self.max_health = 400
+            self.damage = 40
+
+        self.current_health = self.max_health
+        self.speed = self.walk_speed
         self.state = "patrol"
 
         self.facing_right = True
@@ -75,14 +112,15 @@ class Enemy(pygame.sprite.Sprite):
         self.on_ground = False
 
         for tile in tiles:
-            if tile.rect.colliderect(self.hitbox):
-                if self.direction.y > 0:
-                    self.hitbox.bottom = tile.rect.top
-                    self.direction.y = 0
-                    self.on_ground = True
-                elif self.direction.y < 0:
-                    self.hitbox.top = tile.rect.bottom
-                    self.direction.y = 0
+            if getattr(tile, "is_solid", True):
+                if tile.rect.colliderect(self.hitbox):
+                    if self.direction.y > 0:
+                        self.hitbox.bottom = tile.rect.top
+                        self.direction.y = 0
+                        self.on_ground = True
+                    elif self.direction.y < 0:
+                        self.hitbox.top = tile.rect.bottom
+                        self.direction.y = 0
 
     def check_ledge(self, tiles):
         if self.direction.y != 0:
@@ -98,8 +136,9 @@ class Enemy(pygame.sprite.Sprite):
         check_rect = pygame.Rect(look_x - 5, look_y - 10, 10, 20)
 
         for tile in tiles:
-            if tile.rect.colliderect(check_rect):
-                return True
+            if getattr(tile, "is_solid", True):
+                if tile.rect.colliderect(check_rect):
+                    return True
         return False
 
     def get_player_data(self, player):
@@ -136,30 +175,35 @@ class Enemy(pygame.sprite.Sprite):
         else:
             self.speed = self.walk_speed
 
+        # enemy 05 jumping behavior
+        if self.is_jumping_type and self.on_ground:
+            self.jump()
+
     def move_and_check_walls(self, tiles):
         self.hitbox.x += self.direction.x * self.speed
 
         for tile in tiles:
-            if tile.rect.colliderect(self.hitbox):
-                if self.direction.x > 0:
-                    self.hitbox.right = tile.rect.left
+            if getattr(tile, "is_solid", True):
+                if tile.rect.colliderect(self.hitbox):
+                    if self.direction.x > 0:
+                        self.hitbox.right = tile.rect.left
 
-                    # AI DECISION: jump or turn
-                    if self.state == "chase" and self.on_ground:
-                        self.jump()
-                    else:
-                        self.direction.x = -1
-                        self.facing_right = False
+                        # AI DECISION: jump or turn
+                        if self.state == "chase" and self.on_ground:
+                            self.jump()
+                        else:
+                            self.direction.x = -1
+                            self.facing_right = False
 
-                elif self.direction.x < 0:
-                    self.hitbox.left = tile.rect.right
+                    elif self.direction.x < 0:
+                        self.hitbox.left = tile.rect.right
 
-                    # AI DECISION: jump or turn
-                    if self.state == "chase" and self.on_ground:
-                        self.jump()
-                    else:
-                        self.direction.x = 1
-                        self.facing_right = True
+                        # AI DECISION: jump or turn
+                        if self.state == "chase" and self.on_ground:
+                            self.jump()
+                        else:
+                            self.direction.x = 1
+                            self.facing_right = True
 
         if self.on_ground:
             is_safe = self.check_ledge(tiles)
@@ -190,6 +234,32 @@ class Enemy(pygame.sprite.Sprite):
 
         self.rect = self.image.get_rect()
         self.rect.midbottom = self.hitbox.midbottom
+
+    def draw_bars(self, surface, offset_x, offset_y):
+        if self.current_health < self.max_health:
+            bar_width = 40
+            bar_height = 5
+
+            # position above the enemy
+            draw_x = self.rect.centerx - (bar_width // 2) - offset_x
+            draw_y = self.rect.top - 15 - offset_y
+
+            ratio = self.current_health / self.max_health
+            fill_width = int(bar_width * ratio)
+
+            bg_rect = pygame.Rect(draw_x, draw_y, bar_width, bar_height)
+            fill_rect = pygame.Rect(draw_x, draw_y, fill_width, bar_height)
+
+            pygame.draw.rect(surface, (30, 0, 40), bg_rect)
+            pygame.draw.rect(surface, (138, 43, 226), fill_rect)
+            pygame.draw.rect(surface, (0, 0, 0), bg_rect, 1)
+
+    def get_damage(self, amount):
+        self.current_health -= amount
+        if self.current_health <= 0:
+            self.kill()
+            return True
+        return False
 
     def update(self, tiles, player):
         self.behavior(player)

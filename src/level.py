@@ -10,6 +10,8 @@ from rain import Rain
 from tile import Tile
 from player import Player
 from enemy import Enemy
+from bullet import Bullet
+from tower import Tower
 from settings import (
     TILE_SIZE,
     DAY_CYCLE_LENGTH,
@@ -27,6 +29,8 @@ class Level:
         self.visible_sprites = CameraGroup()
         self.tiles = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
+        self.bullets = pygame.sprite.Group()
+        self.towers = pygame.sprite.Group()
         self.player = pygame.sprite.GroupSingle()
         self.clouds = pygame.sprite.Group()
 
@@ -60,6 +64,9 @@ class Level:
 
         self.spawn_timer = 0
         self.spawn_cooldown = 120
+
+        # Interaction
+        self.mouse_pressed_prev = False
 
     def generate_cloud_cache(self):
         cache = []
@@ -102,6 +109,8 @@ class Level:
         self.visible_sprites.empty()
         self.tiles.empty()
         self.enemies.empty()
+        self.bullets.empty()
+        self.towers.empty()
         self.player.empty()
         self.clouds.empty()
 
@@ -152,9 +161,9 @@ class Level:
         self.player.add(p)
         self.visible_sprites.add(p)
 
-        # Destroyed towers: (offset_x, tile_type, flip_x)
+        # Destroyed towers
         left_towers = [
-            (-800, "200", True),   # cannon
+            (-800, "200", True),  # cannon
             (-1600, "201", True),  # archer1
             (-2400, "202", True),  # archer2
         ]
@@ -167,6 +176,8 @@ class Level:
         for offset, t_type, flip in left_towers + right_towers:
             tower = Tile((center_x + offset, ground_y), TILE_SIZE, t_type, flip_x=flip)
             self.visible_sprites.add(tower)
+            # Add to tiles too so we can find it easily for interaction
+            self.tiles.add(tower)
 
         num_clouds = self.map_width // 150
         for _ in range(num_clouds):
@@ -177,6 +188,11 @@ class Level:
             cloud = FogCloud(cx, cy, self.map_width, image, speed)
             self.clouds.add(cloud)
             self.visible_sprites.add(cloud)
+
+    def create_bullet(self, x, y, direction, surf, damage=10, gravity=0):
+        bullet = Bullet(x, y, direction, surf, damage, gravity)
+        self.bullets.add(bullet)
+        self.visible_sprites.add(bullet)
 
     def day_night_cycle(self):
         prev_day_index = self.day_timer // DAY_CYCLE_LENGTH
@@ -225,19 +241,79 @@ class Level:
                 self.enemies.add(enemy)
                 self.visible_sprites.add(enemy)
 
-    def draw_ui(self):
-        counter_text = f"day: {self.day_count}"
-        text_surf = self.ui_font.render(counter_text, True, (255, 255, 255))
+    def handle_interaction(self):
+        mouse_pos = pygame.mouse.get_pos()
+        # adjust mouse pos for camera offset
+        world_x = mouse_pos[0] + self.visible_sprites.offset.x
+        world_y = mouse_pos[1] + self.visible_sprites.offset.y
+        mouse_world_pos = (world_x, world_y)
 
+        mouse_pressed = pygame.mouse.get_pressed()[0]
+
+        # check hover for prices
+        hovered_tile = None
+        for sprite in self.tiles:
+            if (
+                sprite.rect.collidepoint(mouse_world_pos)
+                and hasattr(sprite, "is_buyable")
+                and sprite.is_buyable
+            ):
+                hovered_tile = sprite
+                break
+
+        # buying logic
+        if mouse_pressed and not self.mouse_pressed_prev:
+            if hovered_tile:
+                if self.player.sprite.money >= hovered_tile.price:
+                    self.player.sprite.money -= hovered_tile.price
+
+                    # create repaired tower
+                    new_tower = Tower(
+                        hovered_tile.rect.midbottom,
+                        hovered_tile.tile_type,
+                        hovered_tile.flip_x,
+                        self.create_bullet,
+                    )
+                    self.towers.add(new_tower)
+                    self.visible_sprites.add(new_tower)
+
+                    # remove destroyed tower
+                    hovered_tile.kill()
+
+        self.mouse_pressed_prev = mouse_pressed
+        return hovered_tile
+
+    def draw_ui(self, hovered_tile=None):
         screen_w, screen_h = self.display_surface.get_size()
-        text_rect = text_surf.get_rect(bottomright=(screen_w, screen_h))
+        money_text = f"Money: ${self.player.sprite.money}"
+        money_surf = self.ui_font.render(money_text, True, (255, 215, 0))
+        money_rect = money_surf.get_rect(topleft=(20, 20))
 
-        shadow_surf = self.ui_font.render(counter_text, True, (0, 0, 0))
-        shadow_rect = text_rect.copy()
-        shadow_rect.x += 2
-        shadow_rect.y += 2
+        money_shadow = self.ui_font.render(money_text, True, (0, 0, 0))
+        money_shadow_rect = money_rect.copy()
+        money_shadow_rect.x += 2
+        money_shadow_rect.y += 2
 
-        self.display_surface.blit(shadow_surf, shadow_rect)
+        self.display_surface.blit(money_shadow, money_shadow_rect)
+        self.display_surface.blit(money_surf, money_rect)
+
+        # tooltip for buying
+        if hovered_tile:
+            mx, my = pygame.mouse.get_pos()
+            price_text = f"Repair: ${hovered_tile.price}"
+            col = (
+                (0, 255, 0)
+                if self.player.sprite.money >= hovered_tile.price
+                else (255, 0, 0)
+            )
+
+            tooltip_surf = self.ui_font.render(price_text, True, col)
+            tooltip_rect = tooltip_surf.get_rect(topleft=(mx + 15, my))
+
+            bg_rect = tooltip_rect.inflate(10, 10)
+            pygame.draw.rect(self.display_surface, (0, 0, 0), bg_rect)
+            pygame.draw.rect(self.display_surface, (255, 255, 255), bg_rect, 2)
+            self.display_surface.blit(tooltip_surf, tooltip_rect)
 
         # morning celeb
         if self.show_celebration:
@@ -306,15 +382,33 @@ class Level:
         self.rain.update()
         self.rain.draw()
 
-        self.draw_ui()
+        hovered_tile = self.handle_interaction()
+
+        self.draw_ui(hovered_tile)
 
         if self.check_game_over():
             return
 
         self.enemies.update(self.tiles, self.player.sprite)
-        self.player.sprite.update(self.tiles)
+        self.bullets.update(self.tiles)
+        self.player.sprite.update(self.tiles, self.create_bullet)
         self.clouds.update(1.0, None, None)
+        self.towers.update(self.enemies)
 
+        # bullet collisions with enemies
+        hits_bullets = pygame.sprite.groupcollide(
+            self.enemies, self.bullets, False, True
+        )
+        if hits_bullets:
+            for enemy, bullets in hits_bullets.items():
+                for bullet in bullets:
+                    if enemy.get_damage(bullet.damage):
+                        # Enemy Killed!
+                        reward = random.randint(1, 5)
+                        self.player.sprite.money += reward
+
+        # enemy collisions with player
         hits = pygame.sprite.spritecollide(self.player.sprite, self.enemies, False)
         if hits:
-            self.player.sprite.get_damage(20)
+            for sprite in hits:
+                self.player.sprite.get_damage(sprite.damage)

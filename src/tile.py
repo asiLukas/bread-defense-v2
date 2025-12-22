@@ -10,6 +10,12 @@ class Tile(pygame.sprite.Sprite):
         full_path = os.path.join("assets", "tiles")
         tower_path = os.path.join("assets", "towers")
 
+        self.tile_type = tile_type
+        self.flip_x = flip_x
+        self.price = 0
+        self.is_buyable = False
+        self.is_solid = True
+
         if int(tile_type) < 100:
             if tile_type == "1":
                 img = pygame.image.load(os.path.join(full_path, "floor1.png")).convert()
@@ -34,11 +40,26 @@ class Tile(pygame.sprite.Sprite):
 
         # destroyed Towers
         if tile_type == "200":
-             img = pygame.image.load(os.path.join(tower_path, "cannon_destroyed.png")).convert_alpha()
+            img = pygame.image.load(
+                os.path.join(tower_path, "cannon_destroyed.png")
+            ).convert_alpha()
+            self.price = 50
+            self.is_buyable = True
+            self.is_solid = False
         elif tile_type == "201":
-             img = pygame.image.load(os.path.join(tower_path, "archer1_destroyed.png")).convert_alpha()
+            img = pygame.image.load(
+                os.path.join(tower_path, "archer1_destroyed.png")
+            ).convert_alpha()
+            self.price = 30
+            self.is_buyable = True
+            self.is_solid = False
         elif tile_type == "202":
-             img = pygame.image.load(os.path.join(tower_path, "archer2_destroyed.png")).convert_alpha()
+            img = pygame.image.load(
+                os.path.join(tower_path, "archer2_destroyed.png")
+            ).convert_alpha()
+            self.price = 70
+            self.is_buyable = True
+            self.is_solid = False
         # decor
         elif tile_type == "101":
             img = pygame.image.load(
@@ -71,6 +92,7 @@ class Tile(pygame.sprite.Sprite):
 
         self.image = img
         w, h = self.image.get_size()
+
         self.image = pygame.transform.scale(self.image, (int(w * 2), int(h * 2)))
 
         if flip_x:
@@ -79,6 +101,7 @@ class Tile(pygame.sprite.Sprite):
         if tile_type in ["102", "103"]:
             self.rect = self.image.get_rect(midtop=pos)
         elif tile_type in ["200", "201", "202"]:
+            # custom scaling for towers
             self.image = pygame.transform.scale(self.image, (int(w * 4), int(h * 4)))
             self.rect = self.image.get_rect(midbottom=pos)
         else:
