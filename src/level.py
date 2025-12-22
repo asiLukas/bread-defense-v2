@@ -40,6 +40,11 @@ class Level:
         self.map_width = len(level_data[0].split(",")) * TILE_SIZE
         self.map_height = len(level_data) * TILE_SIZE
 
+        # wave management
+        self.night_enemy_queue = []
+        self.wave_generated = False
+        self.spawn_cooldown = 120
+
         self.setup_level(level_data)
 
         self.rain = Rain(self.display_surface)
@@ -129,6 +134,9 @@ class Level:
         self.show_celebration = True
         self.celebration_timer = CELEBRATION_DURATION
 
+        self.night_enemy_queue = []
+        self.wave_generated = False
+
         for row_index, row in enumerate(layout):
             row_values = row.split(",")
             for col_index, val in enumerate(row_values):
@@ -153,7 +161,7 @@ class Level:
                     self.enemies.add(enemy)
                     self.visible_sprites.add(enemy)
 
-        # Center spawn calculation
+        # center spawn calculation
         center_x = self.map_width // 2
         ground_y = 8 * TILE_SIZE
 
@@ -194,6 +202,31 @@ class Level:
         self.bullets.add(bullet)
         self.visible_sprites.add(bullet)
 
+    def generate_night_queue(self):
+        self.night_enemy_queue = []
+        day = self.day_count
+
+        # difficulty scaling
+        num_enemies = 4 + int(day * 1.5)
+        health_mult = 1.0 + (day * 0.1)
+        damage_mult = 1.0 + (day * 0.05)
+
+        # enemy pool management
+        pool = ["enemy01", "enemy04"]
+        if day >= 5:
+            pool.extend(["enemy03", "enemy05"])  # fast/jumpers
+        if day >= 10:
+            pool.extend(["enemy02", "enemy06"])  # tanks
+
+        for _ in range(num_enemies):
+            variant = random.choice(pool)
+            self.night_enemy_queue.append((variant, health_mult, damage_mult))
+
+        # we target spawning en within 80% of night (1200 frames)
+        total_spawn_time = 1200
+        self.spawn_cooldown = max(20, total_spawn_time // num_enemies)
+        self.spawn_timer = self.spawn_cooldown
+
     def day_night_cycle(self):
         prev_day_index = self.day_timer // DAY_CYCLE_LENGTH
 
@@ -205,6 +238,7 @@ class Level:
             self.day_count += 1
             self.show_celebration = True
             self.celebration_timer = CELEBRATION_DURATION
+            self.wave_generated = False  # reset for new day
 
         progress = (self.day_timer % DAY_CYCLE_LENGTH) / DAY_CYCLE_LENGTH
 
@@ -221,6 +255,12 @@ class Level:
             # night
             target_alpha = MAX_DARKNESS
             self.is_night = True
+
+            # generate wave if first time entering night this day
+            if not self.wave_generated:
+                self.generate_night_queue()
+                self.wave_generated = True
+
         else:
             # Dawn
             transition = (progress - NIGHT_END_THRESHOLD) * 10
@@ -235,11 +275,14 @@ class Level:
             self.spawn_timer += 1
             if self.spawn_timer >= self.spawn_cooldown:
                 self.spawn_timer = 0
-                x_pos = random.randint(200, self.map_width - 200)
-                y_pos = -100
-                enemy = Enemy(x_pos, y_pos, "enemy01", 4)
-                self.enemies.add(enemy)
-                self.visible_sprites.add(enemy)
+
+                if self.night_enemy_queue:
+                    variant, hp_m, dmg_m = self.night_enemy_queue.pop(0)
+                    x_pos = random.randint(200, self.map_width - 200)
+                    y_pos = -100
+                    enemy = Enemy(x_pos, y_pos, variant, 4, hp_m, dmg_m)
+                    self.enemies.add(enemy)
+                    self.visible_sprites.add(enemy)
 
     def handle_interaction(self):
         mouse_pos = pygame.mouse.get_pos()
@@ -250,44 +293,64 @@ class Level:
 
         mouse_pressed = pygame.mouse.get_pressed()[0]
 
-        # check hover for prices
-        hovered_tile = None
+        # check hover for prices (Destroyed Towers)
+        hovered_obj = None
+
+        # Check tiles (Destroyed towers)
         for sprite in self.tiles:
             if (
                 sprite.rect.collidepoint(mouse_world_pos)
                 and hasattr(sprite, "is_buyable")
                 and sprite.is_buyable
             ):
-                hovered_tile = sprite
+                hovered_obj = sprite
                 break
 
-        # buying logic
+        # Check built towers (Upgrades)
+        if not hovered_obj:
+            for sprite in self.towers:
+                if sprite.rect.collidepoint(mouse_world_pos):
+                    hovered_obj = sprite
+                    break
+
+        # buying/upgrading logic
         if mouse_pressed and not self.mouse_pressed_prev:
-            if hovered_tile:
-                if self.player.sprite.money >= hovered_tile.price:
-                    self.player.sprite.money -= hovered_tile.price
+            if hovered_obj:
+                # If it's a destroyed tower (Tile)
+                if isinstance(hovered_obj, Tile):
+                    if self.player.sprite.money >= hovered_obj.price:
+                        self.player.sprite.money -= hovered_obj.price
 
-                    # create repaired tower
-                    new_tower = Tower(
-                        hovered_tile.rect.midbottom,
-                        hovered_tile.tile_type,
-                        hovered_tile.flip_x,
-                        self.create_bullet,
-                    )
-                    self.towers.add(new_tower)
-                    self.visible_sprites.add(new_tower)
+                        # create repaired tower
+                        new_tower = Tower(
+                            hovered_obj.rect.midbottom,
+                            hovered_obj.tile_type,
+                            hovered_obj.flip_x,
+                            self.create_bullet,
+                        )
+                        self.towers.add(new_tower)
+                        self.visible_sprites.add(new_tower)
 
-                    # remove destroyed tower
-                    hovered_tile.kill()
+                        # remove destroyed tower
+                        hovered_obj.kill()
+                        hovered_obj = None  # No longer hovering
+
+                # If it's a built tower (Tower)
+                elif isinstance(hovered_obj, Tower):
+                    if self.player.sprite.money >= hovered_obj.upgrade_cost:
+                        if hovered_obj.level < hovered_obj.max_level:
+                            self.player.sprite.money -= hovered_obj.upgrade_cost
+                            hovered_obj.upgrade()
 
         self.mouse_pressed_prev = mouse_pressed
-        return hovered_tile
+        return hovered_obj
 
-    def draw_ui(self, hovered_tile=None):
+    def draw_ui(self, hovered_obj=None):
         screen_w, screen_h = self.display_surface.get_size()
-        money_text = f"Money: ${self.player.sprite.money}"
+
+        money_text = f"${self.player.sprite.money}"
         money_surf = self.ui_font.render(money_text, True, (255, 215, 0))
-        money_rect = money_surf.get_rect(topleft=(20, 20))
+        money_rect = money_surf.get_rect(topleft=(20, 0))
 
         money_shadow = self.ui_font.render(money_text, True, (0, 0, 0))
         money_shadow_rect = money_rect.copy()
@@ -297,17 +360,51 @@ class Level:
         self.display_surface.blit(money_shadow, money_shadow_rect)
         self.display_surface.blit(money_surf, money_rect)
 
-        # tooltip for buying
-        if hovered_tile:
-            mx, my = pygame.mouse.get_pos()
-            price_text = f"Repair: ${hovered_tile.price}"
-            col = (
-                (0, 255, 0)
-                if self.player.sprite.money >= hovered_tile.price
-                else (255, 0, 0)
-            )
+        wpn_cost = self.player.sprite.weapon_upgrade_cost
+        wpn_text = f"[U] upgrade weapon (${wpn_cost})"
+        wpn_surf = self.ui_font.render(wpn_text, True, (200, 200, 200))
+        wpn_rect = wpn_surf.get_rect(topleft=(20, 50))
+        wpn_shadow = self.ui_font.render(wpn_text, True, (0, 0, 0))
+        wpn_sh_rect = wpn_rect.copy()
+        wpn_sh_rect.x += 2
+        wpn_sh_rect.y += 2
+        self.display_surface.blit(wpn_shadow, wpn_sh_rect)
+        self.display_surface.blit(wpn_surf, wpn_rect)
 
-            tooltip_surf = self.ui_font.render(price_text, True, col)
+        reg_cost = self.player.sprite.regen_upgrade_cost
+        reg_level = self.player.sprite.regen_level
+        reg_text = f"[H] upgrade uegen Lv{reg_level} (${reg_cost})"
+        reg_surf = self.ui_font.render(reg_text, True, (200, 200, 200))
+        reg_rect = reg_surf.get_rect(topleft=(20, 80))
+        reg_shadow = self.ui_font.render(reg_text, True, (0,0,0))
+        reg_sh_rect = reg_rect.copy()
+        reg_sh_rect.x += 2
+        reg_sh_rect.y += 2
+        self.display_surface.blit(reg_shadow, reg_sh_rect)
+        self.display_surface.blit(reg_surf, reg_rect)
+
+        # tooltip for buying/upgrading
+        cost = 0
+        text = ""
+        if hovered_obj:
+            mx, my = pygame.mouse.get_pos()
+
+            if isinstance(hovered_obj, Tile):
+                text = f"Repair: ${hovered_obj.price}"
+                cost = hovered_obj.price
+            elif isinstance(hovered_obj, Tower):
+                if hovered_obj.level >= hovered_obj.max_level:
+                    text = "Max Level"
+                    cost = 0
+                else:
+                    text = (
+                        f"Upgrade Lv{hovered_obj.level+1}: ${hovered_obj.upgrade_cost}"
+                    )
+                    cost = hovered_obj.upgrade_cost
+
+            col = (0, 255, 0) if self.player.sprite.money >= cost else (255, 0, 0)
+
+            tooltip_surf = self.ui_font.render(text, True, col)
             tooltip_rect = tooltip_surf.get_rect(topleft=(mx + 15, my))
 
             bg_rect = tooltip_rect.inflate(10, 10)
@@ -326,6 +423,9 @@ class Level:
                     if self.day_count > 1
                     else "day 1"
                 )
+                if self.day_count == 1:
+                    msg = "day 1"
+
                 big_text = self.font.render(msg, True, (255, 215, 0))
                 big_rect = big_text.get_rect(
                     center=(screen_w // 2, screen_h // 2 - 100)
@@ -403,8 +503,8 @@ class Level:
             for enemy, bullets in hits_bullets.items():
                 for bullet in bullets:
                     if enemy.get_damage(bullet.damage):
-                        # Enemy Killed!
-                        reward = random.randint(1, 5)
+                        # enemy killed!
+                        reward = random.randint(5, 10)
                         self.player.sprite.money += reward
 
         # enemy collisions with player

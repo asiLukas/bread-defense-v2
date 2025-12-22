@@ -33,8 +33,7 @@ level = Level(tower_defense_map, screen)
 music_path = os.path.join("assets", "sound", "main_music.wav")
 pygame.mixer.music.load(music_path)
 pygame.mixer.music.set_volume(0.5)
-# TODO
-# pygame.mixer.music.play(-1)
+pygame.mixer.music.play(-1)
 
 while True:
     for event in pygame.event.get():

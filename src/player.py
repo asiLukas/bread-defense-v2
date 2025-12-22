@@ -22,15 +22,15 @@ class Player(pygame.sprite.Sprite):
 
         # movement
         self.direction = pygame.math.Vector2(0, 0)
-        self.walk_speed = 5
-        self.sprint_speed = 9
+        self.walk_speed = 6
+        self.sprint_speed = 11
         self.speed = self.walk_speed
         self.gravity = 0.8
         self.jump_speed = -16
 
         # sprint & Stamina
         self.is_sprinting = False
-        self.max_stamina = 100
+        self.max_stamina = 300
         self.current_stamina = self.max_stamina
 
         # health
@@ -41,7 +41,15 @@ class Player(pygame.sprite.Sprite):
         self.hit_time = 0
         self.is_dead = False
 
-        self.money = 100
+        self.money = 0
+
+        # upgrades
+        self.damage = 10
+        self.weapon_level = 1
+        self.weapon_upgrade_cost = 60
+        self.regen_level = 0
+        self.regen_upgrade_cost = 50
+        self.last_regen_time = 0
 
         # Shooting
         self.shoot_cooldown = 400
@@ -103,6 +111,8 @@ class Player(pygame.sprite.Sprite):
 
         just_pressed_d = keys[pygame.K_d] and not self.previous_keys[pygame.K_d]
         just_pressed_a = keys[pygame.K_a] and not self.previous_keys[pygame.K_a]
+        just_pressed_u = keys[pygame.K_u] and not self.previous_keys[pygame.K_u]
+        just_pressed_h = keys[pygame.K_h] and not self.previous_keys[pygame.K_h]
 
         if not keys[pygame.K_d] and not keys[pygame.K_a]:
             self.is_sprinting = False
@@ -116,9 +126,28 @@ class Player(pygame.sprite.Sprite):
                 # Offset bullet slightly to match player height
                 bullet_y = self.rect.centery + 10
                 create_bullet_callback(
-                    self.rect.centerx, bullet_y, direction, self.bullet_surf
+                    self.rect.centerx,
+                    bullet_y,
+                    direction,
+                    self.bullet_surf,
+                    self.damage,
                 )
                 self.last_shoot_time = current_time
+
+        # weapon upgrade
+        if just_pressed_u:
+            if self.money >= self.weapon_upgrade_cost:
+                self.money -= self.weapon_upgrade_cost
+                self.weapon_level += 1
+                self.damage = int(self.damage * 1.5)
+                self.weapon_upgrade_cost = int(self.weapon_upgrade_cost * 1.5)
+        # health upgrade
+        if just_pressed_h:
+            if self.money >= self.regen_upgrade_cost:
+                self.money -= self.regen_upgrade_cost
+                self.regen_level += 1
+                # Increase cost
+                self.regen_upgrade_cost = int(self.regen_upgrade_cost * 1.5)
 
         # double Tap Check
         if just_pressed_d:
@@ -178,8 +207,20 @@ class Player(pygame.sprite.Sprite):
                 self.speed = self.walk_speed
         else:
             if self.current_stamina < self.max_stamina:
-                self.current_stamina += 0.5
+                self.current_stamina += 2
 
+    def passive_regeneration(self):
+        if self.regen_level > 0 and not self.is_dead:
+            current_time = pygame.time.get_ticks()
+            if current_time - self.last_regen_time >= 1000:
+                heal_amount = self.regen_level
+                
+                if self.current_health < self.max_health:
+                    self.current_health += heal_amount
+                    if self.current_health > self.max_health:
+                        self.current_health = self.max_health
+                
+                self.last_regen_time = current_time
     def invincibility_timer(self):
         if self.invincible:
             current_time = pygame.time.get_ticks()
@@ -299,6 +340,7 @@ class Player(pygame.sprite.Sprite):
     def update(self, tiles, create_bullet_callback):
         self.get_input(create_bullet_callback)
         self.manage_stamina()
+        self.passive_regeneration()
         self.invincibility_timer()
         self.get_status()
         self.check_horizontal_collisions(tiles)

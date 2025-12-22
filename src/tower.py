@@ -15,6 +15,11 @@ class Tower(pygame.sprite.Sprite):
         self.bullet_offset = (0, 0)
         self.bullet_surf = None
 
+        # upgrade stats
+        self.level = 1
+        self.max_level = 5
+        self.upgrade_cost = 150
+
         if tower_type == "200":
             asset_name = "cannon.png"
             self.damage = 30
@@ -108,3 +113,10 @@ class Tower(pygame.sprite.Sprite):
             self.damage,
             self.bullet_gravity,
         )
+
+    def upgrade(self):
+        if self.level < self.max_level:
+            self.level += 1
+            self.damage = int(self.damage * 1.3)
+            self.cooldown = max(100, int(self.cooldown * 0.9))
+            self.upgrade_cost = int(self.upgrade_cost * 1.5)

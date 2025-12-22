@@ -3,7 +3,15 @@ import os
 
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, enemy_variant="enemy01", scale_factor=None):
+    def __init__(
+        self,
+        pos_x,
+        pos_y,
+        enemy_variant="enemy01",
+        scale_factor=None,
+        health_mult=1.0,
+        damage_mult=1.0,
+    ):
         super().__init__()
         self.z = 1
         self.import_assets(enemy_variant, scale_factor)
@@ -57,6 +65,10 @@ class Enemy(pygame.sprite.Sprite):
             self.chase_speed = 2
             self.max_health = 400
             self.damage = 40
+
+        # apply Difficulty Multipliers
+        self.max_health = int(self.max_health * health_mult)
+        self.damage = int(self.damage * damage_mult)
 
         self.current_health = self.max_health
         self.speed = self.walk_speed
