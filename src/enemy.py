@@ -11,6 +11,7 @@ class Enemy(pygame.sprite.Sprite):
         scale_factor=None,
         health_mult=1.0,
         damage_mult=1.0,
+        facing_right=True,
     ):
         super().__init__()
         self.z = 1
@@ -22,7 +23,12 @@ class Enemy(pygame.sprite.Sprite):
         self.image = self.animations["run"][self.frame_index]
 
         # movement
-        self.direction = pygame.math.Vector2(1, 0)
+        self.facing_right = facing_right
+        if self.facing_right:
+            self.direction = pygame.math.Vector2(1, 0)
+        else:
+            self.direction = pygame.math.Vector2(-1, 0)
+
         self.gravity = 0.8
 
         # defaults
@@ -74,7 +80,6 @@ class Enemy(pygame.sprite.Sprite):
         self.speed = self.walk_speed
         self.state = "patrol"
 
-        self.facing_right = True
         self.on_ground = False
 
         self.rect = self.image.get_rect(midbottom=(pos_x, pos_y))

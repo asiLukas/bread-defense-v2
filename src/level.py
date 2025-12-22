@@ -19,6 +19,8 @@ from settings import (
     NIGHT_END_THRESHOLD,
     MAX_DARKNESS,
     CELEBRATION_DURATION,
+    BORDER_LEFT_INDEX,
+    BORDER_RIGHT_INDEX,
 )
 
 
@@ -157,7 +159,11 @@ class Level:
 
                 elif val in enemy_map:
                     enemy_variant = enemy_map[val]
-                    enemy = Enemy(x, y, enemy_variant, 4)
+                    # Calculate facing
+                    facing = True
+                    if x > self.map_width // 2:
+                        facing = False
+                    enemy = Enemy(x, y, enemy_variant, 4, facing_right=facing)
                     self.enemies.add(enemy)
                     self.visible_sprites.add(enemy)
 
@@ -278,9 +284,20 @@ class Level:
 
                 if self.night_enemy_queue:
                     variant, hp_m, dmg_m = self.night_enemy_queue.pop(0)
-                    x_pos = random.randint(200, self.map_width - 200)
+
+                    min_x = BORDER_LEFT_INDEX * TILE_SIZE
+                    max_x = BORDER_RIGHT_INDEX * TILE_SIZE
+                    x_pos = random.randint(min_x, max_x)
                     y_pos = -100
-                    enemy = Enemy(x_pos, y_pos, variant, 4, hp_m, dmg_m)
+
+                    # Calculate facing
+                    facing = True
+                    if x_pos > self.map_width // 2:
+                        facing = False
+
+                    enemy = Enemy(
+                        x_pos, y_pos, variant, 4, hp_m, dmg_m, facing_right=facing
+                    )
                     self.enemies.add(enemy)
                     self.visible_sprites.add(enemy)
 
@@ -376,12 +393,23 @@ class Level:
         reg_text = f"[H] upgrade uegen Lv{reg_level} (${reg_cost})"
         reg_surf = self.ui_font.render(reg_text, True, (200, 200, 200))
         reg_rect = reg_surf.get_rect(topleft=(20, 80))
-        reg_shadow = self.ui_font.render(reg_text, True, (0,0,0))
+        reg_shadow = self.ui_font.render(reg_text, True, (0, 0, 0))
         reg_sh_rect = reg_rect.copy()
         reg_sh_rect.x += 2
         reg_sh_rect.y += 2
         self.display_surface.blit(reg_shadow, reg_sh_rect)
         self.display_surface.blit(reg_surf, reg_rect)
+
+        heal_cost = self.player.sprite.quick_heal_cost
+        heal_text = f"[Q] full heal (${heal_cost})"
+        heal_surf = self.ui_font.render(heal_text, True, (200, 200, 200))
+        heal_rect = heal_surf.get_rect(topleft=(20, 110))
+        heal_shadow = self.ui_font.render(heal_text, True, (0, 0, 0))
+        heal_sh_rect = heal_rect.copy()
+        heal_sh_rect.x += 2
+        heal_sh_rect.y += 2
+        self.display_surface.blit(heal_shadow, heal_sh_rect)
+        self.display_surface.blit(heal_surf, heal_rect)
 
         # tooltip for buying/upgrading
         cost = 0
@@ -504,7 +532,7 @@ class Level:
                 for bullet in bullets:
                     if enemy.get_damage(bullet.damage):
                         # enemy killed!
-                        reward = random.randint(5, 10)
+                        reward = random.randint(10, 20)
                         self.player.sprite.money += reward
 
         # enemy collisions with player

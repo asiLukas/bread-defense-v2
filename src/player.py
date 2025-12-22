@@ -41,15 +41,16 @@ class Player(pygame.sprite.Sprite):
         self.hit_time = 0
         self.is_dead = False
 
-        self.money = 0
+        self.money = 40
 
         # upgrades
-        self.damage = 10
+        self.damage = 20
         self.weapon_level = 1
         self.weapon_upgrade_cost = 60
         self.regen_level = 0
         self.regen_upgrade_cost = 50
         self.last_regen_time = 0
+        self.quick_heal_cost = 30
 
         # Shooting
         self.shoot_cooldown = 400
@@ -113,6 +114,7 @@ class Player(pygame.sprite.Sprite):
         just_pressed_a = keys[pygame.K_a] and not self.previous_keys[pygame.K_a]
         just_pressed_u = keys[pygame.K_u] and not self.previous_keys[pygame.K_u]
         just_pressed_h = keys[pygame.K_h] and not self.previous_keys[pygame.K_h]
+        just_pressed_q = keys[pygame.K_q] and not self.previous_keys[pygame.K_q]
 
         if not keys[pygame.K_d] and not keys[pygame.K_a]:
             self.is_sprinting = False
@@ -148,6 +150,15 @@ class Player(pygame.sprite.Sprite):
                 self.regen_level += 1
                 # Increase cost
                 self.regen_upgrade_cost = int(self.regen_upgrade_cost * 1.5)
+
+        # quick heal
+        if just_pressed_q:
+            if (
+                self.money >= self.quick_heal_cost
+                and self.current_health < self.max_health
+            ):
+                self.money -= self.quick_heal_cost
+                self.current_health = self.max_health
 
         # double Tap Check
         if just_pressed_d:
@@ -214,13 +225,14 @@ class Player(pygame.sprite.Sprite):
             current_time = pygame.time.get_ticks()
             if current_time - self.last_regen_time >= 1000:
                 heal_amount = self.regen_level
-                
+
                 if self.current_health < self.max_health:
                     self.current_health += heal_amount
                     if self.current_health > self.max_health:
                         self.current_health = self.max_health
-                
+
                 self.last_regen_time = current_time
+
     def invincibility_timer(self):
         if self.invincible:
             current_time = pygame.time.get_ticks()
