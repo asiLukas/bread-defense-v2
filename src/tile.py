@@ -3,11 +3,12 @@ import os
 
 
 class Tile(pygame.sprite.Sprite):
-    def __init__(self, pos, size, tile_type):
+    def __init__(self, pos, size, tile_type, flip_x=False):
         super().__init__()
         self.z = 0
         self.image = pygame.Surface((size, size))
         full_path = os.path.join("assets", "tiles")
+        tower_path = os.path.join("assets", "towers")
 
         if int(tile_type) < 100:
             if tile_type == "1":
@@ -31,7 +32,15 @@ class Tile(pygame.sprite.Sprite):
             self.rect = self.image.get_rect(topleft=pos)
             return
 
-        if tile_type == "101":
+        # destroyed Towers
+        if tile_type == "200":
+             img = pygame.image.load(os.path.join(tower_path, "cannon_destroyed.png")).convert_alpha()
+        elif tile_type == "201":
+             img = pygame.image.load(os.path.join(tower_path, "archer1_destroyed.png")).convert_alpha()
+        elif tile_type == "202":
+             img = pygame.image.load(os.path.join(tower_path, "archer2_destroyed.png")).convert_alpha()
+        # decor
+        elif tile_type == "101":
             img = pygame.image.load(
                 os.path.join(full_path, "grass_cliff.png")
             ).convert_alpha()
@@ -63,7 +72,14 @@ class Tile(pygame.sprite.Sprite):
         self.image = img
         w, h = self.image.get_size()
         self.image = pygame.transform.scale(self.image, (int(w * 2), int(h * 2)))
+
+        if flip_x:
+            self.image = pygame.transform.flip(self.image, True, False)
+
         if tile_type in ["102", "103"]:
             self.rect = self.image.get_rect(midtop=pos)
+        elif tile_type in ["200", "201", "202"]:
+            self.image = pygame.transform.scale(self.image, (int(w * 4), int(h * 4)))
+            self.rect = self.image.get_rect(midbottom=pos)
         else:
             self.rect = self.image.get_rect(center=pos)
