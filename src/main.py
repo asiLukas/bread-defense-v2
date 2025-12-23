@@ -1,11 +1,12 @@
 # @generated "partially" Gemini: Added docstrings and type annotations
-import pygame
 import os
+import pygame
 
 from level import Level
 from menu import Menu
 from settings import GAME_HEIGHT
 from utils import tower_defense_map, load_bg, draw_bg, load_high_score, save_high_score
+
 
 pygame.init()
 monitor_info = pygame.display.Info()

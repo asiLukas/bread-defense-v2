@@ -63,7 +63,10 @@ class CameraGroup(pygame.sprite.Group):
                 -sprite.rect.width < offset_pos_x < self.screen_w
                 and -sprite.rect.height < offset_pos_y < self.screen_h
             ):
-                layers[sprite.z].append((sprite, (offset_pos_x, offset_pos_y)))
+                if hasattr(sprite, "z"):
+                    layers[sprite.z].append((sprite, (offset_pos_x, offset_pos_y)))
+                else:
+                    layers[1].append((sprite, (offset_pos_x, offset_pos_y)))
 
         for z in range(4):
             for sprite, pos in layers[z]:

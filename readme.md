@@ -21,8 +21,11 @@ This project is a MVP for the continuation of my original game, [Bread Defense](
 ## 🎮 How to run this
 - this isn't live on itch.io yet -> haven't made any executable, since I'm not happy with this enough to release it
 ```
+git clone ...
 virtualenv -p [path to your python 3.11 exec] [venv name]
+activate the env based on your OS
 pip install -r requirements.txt
+cd src/
 python main.py
 ```
 - NOTE: anything over python 3.8 will probably work fine

@@ -1,7 +1,8 @@
 # @generated "partially" Gemini: Added docstrings and type annotations
-import pygame
 import os
 from typing import Optional, Callable, Dict, List
+
+import pygame
 
 
 class Player(pygame.sprite.Sprite):
@@ -85,7 +86,7 @@ class Player(pygame.sprite.Sprite):
         """Loads animation frames from folders."""
         self.animations = {"idle": [], "run": []}
 
-        for animation in self.animations.keys():
+        for animation in self.animations:
             full_path = os.path.join("assets", "player", animation)
             self.animations[animation] = []
 

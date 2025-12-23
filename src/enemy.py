@@ -1,7 +1,8 @@
 # @generated "partially" Gemini: Added docstrings and type annotations
-import pygame
 import os
 from typing import Optional, Tuple, Dict, List, Any
+
+import pygame
 
 
 class Enemy(pygame.sprite.Sprite):

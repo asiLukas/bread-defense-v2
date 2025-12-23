@@ -1,6 +1,7 @@
 # @generated "partially" Gemini: Added docstrings and type annotations
-import pygame
 from typing import Optional, List, Tuple
+
+import pygame
 
 
 class Menu:

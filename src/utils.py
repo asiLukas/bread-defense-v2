@@ -31,7 +31,7 @@ def generate_row(row_type: str) -> str:
         choices = ["6", "7", "5"]
 
     for i in range(MAP_WIDTH):
-        is_border = i == BORDER_LEFT_INDEX or i == BORDER_RIGHT_INDEX
+        is_border = i in (BORDER_LEFT_INDEX, BORDER_RIGHT_INDEX)
 
         if is_border and row_type in ["sky", "decor"]:
             row.append("99")
@@ -128,7 +128,7 @@ def load_high_score() -> int:
     if not os.path.exists(SCORE_FILE):
         return 0
     try:
-        with open(SCORE_FILE, "r") as f:
+        with open(SCORE_FILE, "r", encoding="utf-8") as f:
             return int(f.read())
     except ValueError:
         return 0
@@ -137,7 +137,7 @@ def load_high_score() -> int:
 def save_high_score(score: int) -> None:
     """Writes the new high score to a local file."""
     try:
-        with open(SCORE_FILE, "w") as f:
+        with open(SCORE_FILE, "w", encoding="utf-8") as f:
             f.write(str(score))
     except IOError:
         print("Could not save high score")

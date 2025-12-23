@@ -1,8 +1,10 @@
 # @generated "all" Gemini 2.0: Configuration for pytest with robust pygame mocks
 import sys
 import os
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_path = os.path.abspath(os.path.join(current_dir, ".."))

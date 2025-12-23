@@ -1,7 +1,8 @@
 # @generated "partially" Gemini: Added docstrings and type annotations
-import pygame
 import os
 from typing import Tuple, Callable
+
+import pygame
 
 
 class Tower(pygame.sprite.Sprite):

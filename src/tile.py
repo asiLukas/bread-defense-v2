@@ -1,7 +1,8 @@
 # @generated "partially" Gemini: Added docstrings and type annotations
-import pygame
 import os
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict, Any
+
+import pygame
 
 
 class Tile(pygame.sprite.Sprite):
@@ -15,8 +16,7 @@ class Tile(pygame.sprite.Sprite):
         super().__init__()
         self.z = 0
         self.image = pygame.Surface((size, size))
-        full_path = os.path.join("assets", "tiles")
-        tower_path = os.path.join("assets", "towers")
+        self.rect = self.image.get_rect(topleft=pos)
 
         self.tile_type = tile_type
         self.flip_x = flip_x
@@ -24,103 +24,124 @@ class Tile(pygame.sprite.Sprite):
         self.is_buyable = False
         self.is_solid = True
 
-        img: Optional[pygame.Surface] = None
+        self._setup_tile(pos, size)
 
-        if int(tile_type) < 100:
-            if tile_type == "1":
-                img = pygame.image.load(os.path.join(full_path, "floor1.png")).convert()
-            elif tile_type == "2":
-                img = pygame.image.load(os.path.join(full_path, "floor2.png")).convert()
-            elif tile_type == "3":
-                img = pygame.image.load(os.path.join(full_path, "floor3.png")).convert()
-            elif tile_type == "4":
-                img = pygame.image.load(os.path.join(full_path, "inn1.png")).convert()
-            elif tile_type == "5":
-                img = pygame.image.load(os.path.join(full_path, "inn2.png")).convert()
-            elif tile_type == "6":
-                img = pygame.image.load(os.path.join(full_path, "inn3.png")).convert()
-            elif tile_type == "7":
-                img = pygame.image.load(os.path.join(full_path, "inn4.png")).convert()
+    def _setup_tile(self, pos: Tuple[int, int], size: int) -> None:
+        full_path = os.path.join("assets", "tiles")
+        tower_path = os.path.join("assets", "towers")
+
+        # Definition of tile properties for cleaner logic
+        tile_defs: Dict[str, Dict[str, Any]] = {
+            "1": {"file": "floor1.png", "dir": full_path},
+            "2": {"file": "floor2.png", "dir": full_path},
+            "3": {"file": "floor3.png", "dir": full_path},
+            "4": {"file": "inn1.png", "dir": full_path},
+            "5": {"file": "inn2.png", "dir": full_path},
+            "6": {"file": "inn3.png", "dir": full_path},
+            "7": {"file": "inn4.png", "dir": full_path},
+            "101": {"file": "grass_cliff.png", "dir": full_path, "scale": 2},
+            "102": {
+                "file": "small_tree.png",
+                "dir": full_path,
+                "scale": 2,
+                "anchor": "midtop",
+            },
+            "103": {
+                "file": "bigger_tree.png",
+                "dir": full_path,
+                "scale": 2,
+                "anchor": "midtop",
+            },
+            "104": {
+                "file": "tree.png",
+                "dir": full_path,
+                "scale": 2,
+                "anchor": "center",
+            },
+            "105": {
+                "file": "big_tree.png",
+                "dir": full_path,
+                "scale": 2,
+                "anchor": "center",
+            },
+            "106": {
+                "file": "big_cliff.png",
+                "dir": full_path,
+                "scale": 2,
+                "anchor": "center",
+            },
+            "107": {
+                "file": "small_cliff.png",
+                "dir": full_path,
+                "scale": 2,
+                "anchor": "center",
+            },
+            "200": {
+                "file": "cannon_destroyed.png",
+                "dir": tower_path,
+                "price": 50,
+                "buyable": True,
+                "solid": False,
+                "scale": 4,
+                "anchor": "midbottom",
+            },
+            "201": {
+                "file": "archer1_destroyed.png",
+                "dir": tower_path,
+                "price": 30,
+                "buyable": True,
+                "solid": False,
+                "scale": 4,
+                "anchor": "midbottom",
+            },
+            "202": {
+                "file": "archer2_destroyed.png",
+                "dir": tower_path,
+                "price": 70,
+                "buyable": True,
+                "solid": False,
+                "scale": 4,
+                "anchor": "midbottom",
+            },
+        }
+
+        if self.tile_type in tile_defs:
+            data = tile_defs[self.tile_type]
+            self.price = data.get("price", 0)
+            self.is_buyable = data.get("buyable", False)
+            self.is_solid = data.get("solid", True)
+
+            img_path = os.path.join(data["dir"], data["file"])
+
+            # Destroyed Towers are interactive/buyable
+            if self.is_buyable or int(self.tile_type) > 100:
+                self.image = pygame.image.load(img_path).convert_alpha()
             else:
-                img = pygame.Surface((size, size))
-                img.set_alpha(100)
+                self.image = pygame.image.load(img_path).convert()
 
-            if img:
-                self.image = pygame.transform.scale(img, (size, size))
-                self.rect = self.image.get_rect(topleft=pos)
-            return
+            scale = data.get("scale", 1)
+            if scale != 1:
+                w, h = self.image.get_size()
+                self.image = pygame.transform.scale(
+                    self.image, (int(w * scale), int(h * scale))
+                )
+            else:
+                self.image = pygame.transform.scale(self.image, (size, size))
 
-        # Destroyed Towers (interactive tiles)
-        if tile_type == "200":
-            img = pygame.image.load(
-                os.path.join(tower_path, "cannon_destroyed.png")
-            ).convert_alpha()
-            self.price = 50
-            self.is_buyable = True
-            self.is_solid = False
-        elif tile_type == "201":
-            img = pygame.image.load(
-                os.path.join(tower_path, "archer1_destroyed.png")
-            ).convert_alpha()
-            self.price = 30
-            self.is_buyable = True
-            self.is_solid = False
-        elif tile_type == "202":
-            img = pygame.image.load(
-                os.path.join(tower_path, "archer2_destroyed.png")
-            ).convert_alpha()
-            self.price = 70
-            self.is_buyable = True
-            self.is_solid = False
-        # Decor
-        elif tile_type == "101":
-            img = pygame.image.load(
-                os.path.join(full_path, "grass_cliff.png")
-            ).convert_alpha()
-        elif tile_type == "102":
-            img = pygame.image.load(
-                os.path.join(full_path, "small_tree.png")
-            ).convert_alpha()
-        elif tile_type == "103":
-            img = pygame.image.load(
-                os.path.join(full_path, "bigger_tree.png")
-            ).convert_alpha()
-        elif tile_type == "104":
-            img = pygame.image.load(os.path.join(full_path, "tree.png")).convert_alpha()
-        elif tile_type == "105":
-            img = pygame.image.load(
-                os.path.join(full_path, "big_tree.png")
-            ).convert_alpha()
-        elif tile_type == "106":
-            img = pygame.image.load(
-                os.path.join(full_path, "big_cliff.png")
-            ).convert_alpha()
-        elif tile_type == "107":
-            img = pygame.image.load(
-                os.path.join(full_path, "small_cliff.png")
-            ).convert_alpha()
-        else:
-            img = None
-
-        if img:
-            self.image = img
-            w, h = self.image.get_size()
-            self.image = pygame.transform.scale(self.image, (int(w * 2), int(h * 2)))
-
-            if flip_x:
+            if self.flip_x:
                 self.image = pygame.transform.flip(self.image, True, False)
 
-            if tile_type in ["102", "103"]:
+            anchor = data.get("anchor", "topleft")
+            if anchor == "midtop":
                 self.rect = self.image.get_rect(midtop=pos)
-            elif tile_type in ["200", "201", "202"]:
-                # custom scaling for towers
-                self.image = pygame.transform.scale(
-                    self.image, (int(w * 4), int(h * 4))
-                )
+            elif anchor == "midbottom":
                 self.rect = self.image.get_rect(midbottom=pos)
-            else:
+            elif anchor == "center":
                 self.rect = self.image.get_rect(center=pos)
+            else:
+                self.rect = self.image.get_rect(topleft=pos)
+
         else:
             # Fallback for undefined tiles
-            self.image = pygame.Surface((size, size))
+            self.image.set_alpha(100)
             self.rect = self.image.get_rect(topleft=pos)
