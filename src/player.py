@@ -107,26 +107,32 @@ class Player(pygame.sprite.Sprite):
     def get_input(self, create_bullet_callback):
         if self.is_dead:
             return
+
         keys = pygame.key.get_pressed()
         current_time = pygame.time.get_ticks()
 
-        just_pressed_d = keys[pygame.K_d] and not self.previous_keys[pygame.K_d]
-        just_pressed_a = keys[pygame.K_a] and not self.previous_keys[pygame.K_a]
-        just_pressed_u = keys[pygame.K_u] and not self.previous_keys[pygame.K_u]
-        just_pressed_h = keys[pygame.K_h] and not self.previous_keys[pygame.K_h]
+        just_pressed_e = keys[pygame.K_e] and not self.previous_keys[pygame.K_e]
+        just_pressed_c = keys[pygame.K_c] and not self.previous_keys[pygame.K_c]
         just_pressed_q = keys[pygame.K_q] and not self.previous_keys[pygame.K_q]
 
-        if not keys[pygame.K_d] and not keys[pygame.K_a]:
+        is_moving = keys[pygame.K_d] or keys[pygame.K_a]
+        is_shift = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
+
+        # sprint
+        if is_moving and is_shift:
+            self.is_sprinting = True
+            self.speed = self.sprint_speed
+        else:
             self.is_sprinting = False
             self.speed = self.walk_speed
 
-        # Shooting input
-        if keys[pygame.K_j]:
+        # shooting
+        if pygame.mouse.get_pressed()[0]:
             if current_time - self.last_shoot_time >= self.shoot_cooldown:
                 self.shoot_sound.play()
                 direction = 1 if self.facing_right else -1
-                # Offset bullet slightly to match player height
                 bullet_y = self.rect.centery + 10
+
                 create_bullet_callback(
                     self.rect.centerx,
                     bullet_y,
@@ -134,51 +140,27 @@ class Player(pygame.sprite.Sprite):
                     self.bullet_surf,
                     self.damage,
                 )
+
                 self.last_shoot_time = current_time
 
-        # weapon upgrade
-        if just_pressed_u:
-            if self.money >= self.weapon_upgrade_cost:
-                self.money -= self.weapon_upgrade_cost
-                self.weapon_level += 1
-                self.damage = int(self.damage * 1.5)
-                self.weapon_upgrade_cost = int(self.weapon_upgrade_cost * 1.5)
-        # health upgrade
-        if just_pressed_h:
-            if self.money >= self.regen_upgrade_cost:
-                self.money -= self.regen_upgrade_cost
-                self.regen_level += 1
-                # Increase cost
-                self.regen_upgrade_cost = int(self.regen_upgrade_cost * 1.5)
+        # upgrades
+        if just_pressed_e and self.money >= self.weapon_upgrade_cost:
+            self.money -= self.weapon_upgrade_cost
+            self.weapon_level += 1
+            self.damage = int(self.damage * 1.5)
+            self.weapon_upgrade_cost = int(self.weapon_upgrade_cost * 1.5)
 
-        # quick heal
+        if just_pressed_c and self.money >= self.regen_upgrade_cost:
+            self.money -= self.regen_upgrade_cost
+            self.regen_level += 1
+            self.regen_upgrade_cost = int(self.regen_upgrade_cost * 1.5)
+
         if just_pressed_q:
-            if (
-                self.money >= self.quick_heal_cost
-                and self.current_health < self.max_health
-            ):
+            if self.money >= self.quick_heal_cost and self.current_health < self.max_health:
                 self.money -= self.quick_heal_cost
                 self.current_health = self.max_health
 
-        # double Tap Check
-        if just_pressed_d:
-            if self.last_tap_key == "d" and (
-                current_time - self.last_tap_time < self.double_tap_threshold
-            ):
-                self.is_sprinting = True
-                self.speed = self.sprint_speed
-            self.last_tap_time = current_time
-            self.last_tap_key = "d"
-
-        if just_pressed_a:
-            if self.last_tap_key == "a" and (
-                current_time - self.last_tap_time < self.double_tap_threshold
-            ):
-                self.is_sprinting = True
-                self.speed = self.sprint_speed
-            self.last_tap_time = current_time
-            self.last_tap_key = "a"
-
+        # movement
         if keys[pygame.K_d]:
             self.direction.x = 1
             self.facing_right = True
@@ -188,6 +170,7 @@ class Player(pygame.sprite.Sprite):
         else:
             self.direction.x = 0
 
+        # jump
         if keys[pygame.K_SPACE] and self.direction.y == 0:
             self.jump()
 

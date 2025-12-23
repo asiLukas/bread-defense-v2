@@ -3,6 +3,7 @@ import pygame
 import os
 
 from level import Level
+from menu import Menu
 from settings import GAME_HEIGHT
 from utils import tower_defense_map, load_bg, draw_bg
 
@@ -29,6 +30,8 @@ bg_3 = load_bg("background4b.png", (bg_w, bg_h), transparency=True)
 bg_4 = load_bg("background3.png", (bg_w, bg_h), transparency=True)
 
 level = Level(tower_defense_map, screen)
+menu = Menu(screen, os.path.join("assets", "font.ttf"))
+game_state = "MENU"
 
 music_path = os.path.join("assets", "sound", "main_music.wav")
 pygame.mixer.music.load(music_path)
@@ -42,8 +45,7 @@ while True:
             raise SystemExit
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                pygame.quit()
-                raise SystemExit
+                game_state = "MENU"
 
     camera_x = level.visible_sprites.offset.x
     camera_y = level.visible_sprites.offset.y
@@ -67,7 +69,17 @@ while True:
     draw_bg(screen, bg_3, bg_3_x, bg_3_y, bg_w, screen_w)
     draw_bg(screen, bg_4, bg_4_x, bg_4_y, bg_w, screen_w)
 
-    level.run()
+    if game_state == "MENU":
+        level.run(is_menu=True)
+        action = menu.handle_input()
+        if action == "PLAY":
+            game_state = "PLAYING"
+        elif action == "QUIT":
+            pygame.quit()
+            raise SystemExit
+        menu.draw()
+    else:
+        level.run(is_menu=False)
 
     pygame.display.flip()
     clock.tick(60)

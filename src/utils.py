@@ -27,13 +27,7 @@ def generate_row(row_type):
             continue
 
         if row_type == "decor":
-            if i > BORDER_LEFT_INDEX and i < BORDER_LEFT_INDEX + 8:
-                spawner_idx = i - BORDER_LEFT_INDEX
-                if spawner_idx < 6:
-                    row.append(f"e0{spawner_idx + 1}")
-                else:
-                    row.append("0")
-            elif BORDER_LEFT_INDEX < i < BORDER_RIGHT_INDEX:
+            if BORDER_LEFT_INDEX < i < BORDER_RIGHT_INDEX:
                 if random.random() < 0.20:
                     decor = random.choice(
                         ["101", "102", "103", "104", "105", "106", "107"]

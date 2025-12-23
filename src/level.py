@@ -163,7 +163,10 @@ class Level:
                     facing = True
                     if x > self.map_width // 2:
                         facing = False
-                    enemy = Enemy(x, y, enemy_variant, 4, facing_right=facing)
+                    if enemy_variant in ["enemy_06", "enemy_02"]:
+                        enemy = Enemy(x, y, enemy_variant, 6, facing_right=facing)
+                    else:
+                        enemy = Enemy(x, y, enemy_variant, 4, facing_right=facing)
                     self.enemies.add(enemy)
                     self.visible_sprites.add(enemy)
 
@@ -252,7 +255,7 @@ class Level:
             # dusk
             transition = (progress - NIGHT_START_THRESHOLD) * 10
             target_alpha = int(transition * MAX_DARKNESS)
-            self.is_night = False
+            self.is_night = True
         elif progress < NIGHT_END_THRESHOLD:
             # night
             target_alpha = MAX_DARKNESS
@@ -281,19 +284,24 @@ class Level:
                 if self.night_enemy_queue:
                     variant, hp_m, dmg_m = self.night_enemy_queue.pop(0)
 
-                    min_x = BORDER_LEFT_INDEX * TILE_SIZE
-                    max_x = BORDER_RIGHT_INDEX * TILE_SIZE
-                    x_pos = random.randint(min_x, max_x)
-                    y_pos = -100
+                    min_x = BORDER_LEFT_INDEX * TILE_SIZE + 10 * TILE_SIZE
+                    max_x = BORDER_RIGHT_INDEX * TILE_SIZE - 10 * TILE_SIZE
+                    x = random.randint(min_x, max_x)
+                    y = -100
 
                     # Calculate facing
                     facing = True
-                    if x_pos > self.map_width // 2:
+                    if x > self.map_width // 2:
                         facing = False
 
-                    enemy = Enemy(
-                        x_pos, y_pos, variant, 4, hp_m, dmg_m, facing_right=facing
-                    )
+                    if variant in ["enemy_06", "enemy_02"]:
+                        enemy = Enemy(
+                            x, y, variant, 6, hp_m, dmg_m, facing_right=facing
+                        )
+                    else:
+                        enemy = Enemy(
+                            x, y, variant, 4, hp_m, dmg_m, facing_right=facing
+                        )
                     self.enemies.add(enemy)
                     self.visible_sprites.add(enemy)
 
@@ -374,7 +382,8 @@ class Level:
         self.display_surface.blit(money_surf, money_rect)
 
         wpn_cost = self.player.sprite.weapon_upgrade_cost
-        wpn_text = f"[U] upgrade weapon (${wpn_cost})"
+        wpn_level = self.player.sprite.weapon_level
+        wpn_text = f"[E] upgrade weapon Lvl{wpn_level} (${wpn_cost})"
         wpn_surf = self.ui_font.render(wpn_text, True, (200, 200, 200))
         wpn_rect = wpn_surf.get_rect(topleft=(20, 50))
         wpn_shadow = self.ui_font.render(wpn_text, True, (0, 0, 0))
@@ -386,7 +395,7 @@ class Level:
 
         reg_cost = self.player.sprite.regen_upgrade_cost
         reg_level = self.player.sprite.regen_level
-        reg_text = f"[H] upgrade uegen Lv{reg_level} (${reg_cost})"
+        reg_text = f"[C] upgrade regeneration Lv{reg_level} (${reg_cost})"
         reg_surf = self.ui_font.render(reg_text, True, (200, 200, 200))
         reg_rect = reg_surf.get_rect(topleft=(20, 80))
         reg_shadow = self.ui_font.render(reg_text, True, (0, 0, 0))
@@ -442,14 +451,7 @@ class Level:
             if self.celebration_timer <= 0:
                 self.show_celebration = False
             else:
-                msg = (
-                    f"survived day {self.day_count - 1}"
-                    if self.day_count > 1
-                    else "day 1"
-                )
-                if self.day_count == 1:
-                    msg = "day 1"
-
+                msg = f"day {self.day_count}"
                 big_text = self.font.render(msg, True, (255, 215, 0))
                 big_rect = big_text.get_rect(
                     center=(screen_w // 2, screen_h // 2 - 100)
@@ -494,17 +496,21 @@ class Level:
             return True
         return False
 
-    def run(self):
-        self.day_night_cycle()
-        self.spawn_night_enemies()
+    def run(self, is_menu=False):
+        if not is_menu:
+            self.day_night_cycle()
+            self.spawn_night_enemies()
 
-        self.visible_sprites.custom_draw(self.player.sprite)  #
+        self.visible_sprites.custom_draw(self.player.sprite, show_player=not is_menu)
 
         if self.current_darkness > 0:
             self.display_surface.blit(self.dark_overlay, (0, 0))
 
         self.rain.update()
         self.rain.draw()
+        self.clouds.update(1.0, None, None)
+        if is_menu:
+            return
 
         hovered_tile = self.handle_interaction()
 
@@ -516,7 +522,6 @@ class Level:
         self.enemies.update(self.tiles, self.player.sprite)
         self.bullets.update(self.tiles)
         self.player.sprite.update(self.tiles, self.create_bullet)
-        self.clouds.update(1.0, None, None)
         self.towers.update(self.enemies)
 
         # bullet collisions with enemies
