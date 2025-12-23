@@ -8,4 +8,21 @@ This project is a MVP for the continuation of my original game, [Bread Defense](
 
 
 ## 🎯 Goals
-- TODO
+- _nice_ live underground world with day/night cycles
+- 6 enemy types
+- 3 defense types, that the player can buy based on their collectibles/cash
+- player gun, which can be upgradeable
+- upgradeable health regeneration & other stats
+- an inventory to hold cash
+- simple menu
+- infinite game logic with best score for MVP purposes
+- things outside MVP -> proper inventory, npcs other than archers, story, better animations...
+
+## 🎮 How to run this
+- this isn't live on itch.io yet -> haven't made any executable, since I'm not happy with this enough to release it
+```
+virtualenv -p [path to your python 3.11 exec] [venv name]
+pip install -r requirements.txt
+python main.py
+```
+- NOTE: anything over python 3.8 will probably work fine
