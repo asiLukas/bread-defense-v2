@@ -1,1 +1,8 @@
+iniconfig==2.3.0
+numpy==2.4.0
+packaging==25.0
+particlepy==1.1.0
+pluggy==1.6.0
 pygame==2.6.1
+Pygments==2.19.2
+pytest==9.0.2
