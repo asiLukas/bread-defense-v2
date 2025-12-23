@@ -1,14 +1,19 @@
-# @generated "partially" Gemini: Added docstrings and type annotations
+# @generated "partially" Gemini: Optimized asset loading with caching
 import os
 from typing import Optional, Tuple, Dict, List, Any
 
 import pygame
+
+from settings import TILE_SIZE
 
 
 class Enemy(pygame.sprite.Sprite):
     """
     Represents an enemy entity with simple AI behavior (patrol/chase).
     """
+
+    # class-level cache to prevent reloading images from disk for every enemy instance
+    _ASSET_CACHE: Dict[str, Dict[str, List[pygame.Surface]]] = {}
 
     def __init__(
         self,
@@ -97,7 +102,21 @@ class Enemy(pygame.sprite.Sprite):
         self.last_update_time = pygame.time.get_ticks()
 
     def import_assets(self, variant: str, scale: Optional[float]) -> None:
-        """Loads run animation assets for the enemy."""
+        """
+        Loads run animation assets for the enemy.
+        Uses caching to avoid disk I/O lags on spawn.
+        """
+        if not scale:
+            scale = 1.0
+
+        cache_key = f"{variant}_{scale}"
+
+        # return cached assets if they exist
+        if cache_key in Enemy._ASSET_CACHE:
+            self.animations = Enemy._ASSET_CACHE[cache_key]
+            return
+
+        # If not in cache, load them
         self.animations = {"run": []}
         full_path = os.path.join("assets", variant, "run")
         try:
@@ -114,10 +133,12 @@ class Enemy(pygame.sprite.Sprite):
                 image = image.subsurface(rect)
 
                 w, h = image.get_size()
-                if not scale:
-                    scale = 1
                 image = pygame.transform.scale(image, (int(w * scale), int(h * scale)))
                 self.animations["run"].append(image)
+
+            # save to cache
+            Enemy._ASSET_CACHE[cache_key] = self.animations
+
         except FileNotFoundError:
             surf = pygame.Surface((32, 32))
             surf.fill("red")
@@ -127,19 +148,29 @@ class Enemy(pygame.sprite.Sprite):
         self.direction.y += self.gravity
         self.hitbox.y += self.direction.y
 
+    def get_nearby_tiles(self, tiles_by_col: Dict[int, List[Any]]) -> List[Any]:
+        """Returns a small list of tiles from the columns surrounding the enemy."""
+        col = int(self.hitbox.centerx // TILE_SIZE)
+        nearby_tiles = []
+        # check current column and immediate neighbors (col-1, col, col+1)
+        for c in range(col - 1, col + 2):
+            if c in tiles_by_col:
+                nearby_tiles.extend(tiles_by_col[c])
+        return nearby_tiles
+
     def jump(self) -> None:
         if self.on_ground:
             self.direction.y = self.jump_speed
             self.on_ground = False
 
-    def check_vertical_collisions(self, tiles: pygame.sprite.Group) -> None:
-        """Handles gravity and floor collision."""
+    def check_vertical_collisions(self, tiles_by_col: Dict[int, List[Any]]) -> None:
+        """Handles gravity and floor collision using optimized tile lookup."""
         self.apply_gravity()
+        nearby_tiles = self.get_nearby_tiles(tiles_by_col)
 
-        # assume not on ground until proven otherwise
         self.on_ground = False
 
-        for tile in tiles:
+        for tile in nearby_tiles:
             if getattr(tile, "is_solid", True):
                 if tile.rect.colliderect(self.hitbox):
                     if self.direction.y > 0:
@@ -150,8 +181,8 @@ class Enemy(pygame.sprite.Sprite):
                         self.hitbox.top = tile.rect.bottom
                         self.direction.y = 0
 
-    def check_ledge(self, tiles: pygame.sprite.Group) -> bool:
-        """Checks if there is ground ahead to prevent falling off edges during patrol."""
+    def check_ledge(self, tiles_by_col: Dict[int, List[Any]]) -> bool:
+        """Checks if there is ground ahead using optimized tile lookup."""
         if self.direction.y != 0:
             return True
 
@@ -164,7 +195,9 @@ class Enemy(pygame.sprite.Sprite):
         look_y = self.hitbox.bottom + 10
         check_rect = pygame.Rect(look_x - 5, look_y - 10, 10, 20)
 
-        for tile in tiles:
+        nearby_tiles = self.get_nearby_tiles(tiles_by_col)
+
+        for tile in nearby_tiles:
             if getattr(tile, "is_solid", True):
                 if tile.rect.colliderect(check_rect):
                     return True
@@ -210,17 +243,17 @@ class Enemy(pygame.sprite.Sprite):
         if self.is_jumping_type and self.on_ground:
             self.jump()
 
-    def move_and_check_walls(self, tiles: pygame.sprite.Group) -> None:
-        """Handles X-axis movement and wall collisions."""
+    def move_and_check_walls(self, tiles_by_col: Dict[int, List[Any]]) -> None:
+        """Handles X-axis movement using optimized tile lookup."""
         self.hitbox.x += self.direction.x * self.speed
 
-        for tile in tiles:
+        nearby_tiles = self.get_nearby_tiles(tiles_by_col)
+
+        for tile in nearby_tiles:
             if getattr(tile, "is_solid", True):
                 if tile.rect.colliderect(self.hitbox):
                     if self.direction.x > 0:
                         self.hitbox.right = tile.rect.left
-
-                        # AI DECISION: jump or turn
                         if self.state == "chase" and self.on_ground:
                             self.jump()
                         else:
@@ -229,8 +262,6 @@ class Enemy(pygame.sprite.Sprite):
 
                     elif self.direction.x < 0:
                         self.hitbox.left = tile.rect.right
-
-                        # AI DECISION: jump or turn
                         if self.state == "chase" and self.on_ground:
                             self.jump()
                         else:
@@ -238,7 +269,7 @@ class Enemy(pygame.sprite.Sprite):
                             self.facing_right = True
 
         if self.on_ground:
-            is_safe = self.check_ledge(tiles)
+            is_safe = self.check_ledge(tiles_by_col)
             if not is_safe:
                 if self.state == "patrol":
                     self.direction.x *= -1
@@ -298,9 +329,9 @@ class Enemy(pygame.sprite.Sprite):
             return True
         return False
 
-    def update(self, tiles: pygame.sprite.Group, player: Any) -> None:
+    def update(self, tiles_by_col: Dict[int, List[Any]], player: Any) -> None:
         """Main update loop."""
         self.behavior(player)
-        self.move_and_check_walls(tiles)
-        self.check_vertical_collisions(tiles)
+        self.move_and_check_walls(tiles_by_col)
+        self.check_vertical_collisions(tiles_by_col)
         self.animate()

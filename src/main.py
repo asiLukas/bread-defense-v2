@@ -12,7 +12,7 @@ pygame.init()
 monitor_info = pygame.display.Info()
 monitor_w = monitor_info.current_w
 monitor_h = monitor_info.current_h
-monitor_ratio = monitor_w / monitor_h
+monitor_ratio = min(monitor_w / monitor_h, 1.78)
 flags = pygame.FULLSCREEN | pygame.SCALED
 GAME_WIDTH = int(GAME_HEIGHT * monitor_ratio)
 screen = pygame.display.set_mode((GAME_WIDTH, GAME_HEIGHT), flags)
@@ -21,7 +21,7 @@ screen_w, screen_h = screen.get_size()
 pygame.display.set_caption("BDV2")
 clock = pygame.time.Clock()
 
-zoom_factor = 1.5
+zoom_factor = 1.2
 bg_w = int(screen_w * zoom_factor)
 bg_h = int(screen_h * zoom_factor)
 

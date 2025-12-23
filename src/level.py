@@ -1,7 +1,7 @@
 # @generated "partially" Gemini: Added docstrings and type annotations
 import os
 import random
-from typing import List, Tuple, Any, Optional
+from typing import List, Tuple, Any, Optional, Dict
 
 import pygame
 import particlepy.particle
@@ -49,6 +49,9 @@ class Level:
         self.map_width = len(level_data[0].split(",")) * TILE_SIZE
         self.map_height = len(level_data) * TILE_SIZE
 
+        # spatial Partitioning for tiles
+        self.tiles_by_col: Dict[int, List[Tile]] = {}
+
         # wave management
         self.night_enemy_queue: List[Tuple[str, float, float]] = []
         self.wave_generated = False
@@ -77,9 +80,13 @@ class Level:
         self.hs_celebration_timer = 0
         self.hs_celebrated_this_run = False
 
-        # Overlays
-        self.dark_overlay = pygame.Surface(self.display_surface.get_size())
-        self.dark_overlay.fill((10, 10, 35))  # deep blue/black night tint
+        # instead of a full-screen surface, use a tiny one and scale it up.
+        # this significantly reduces the cost of alpha blending every frame.
+        self.small_overlay = pygame.Surface((32, 18))
+        self.small_overlay.fill((10, 10, 35))
+        self.dark_overlay_scaled = pygame.transform.scale(
+            self.small_overlay, self.display_surface.get_size()
+        )
 
         self.spawn_timer = 0
 
@@ -133,6 +140,7 @@ class Level:
         self.towers.empty()
         self.player.empty()
         self.clouds.empty()
+        self.tiles_by_col = {}
 
         enemy_map = {
             "e01": "enemy01",
@@ -162,14 +170,23 @@ class Level:
                 val = val.strip()
                 x = col_index * TILE_SIZE
                 y = row_index * TILE_SIZE
+
+                def register_tile(t):
+                    col = int(t.rect.centerx // TILE_SIZE)
+                    if col not in self.tiles_by_col:
+                        self.tiles_by_col[col] = []
+                    self.tiles_by_col[col].append(t)
+
                 if val == "99":
                     tile = Tile((x, y), TILE_SIZE, val)
                     self.tiles.add(tile)
+                    register_tile(tile)
 
                 if val in [f"{i}" for i in range(1, 9)]:
                     tile = Tile((x, y), TILE_SIZE, val)
                     self.tiles.add(tile)
                     self.visible_sprites.add(tile)
+                    register_tile(tile)
                 elif val in [f"{i}" for i in range(100, 109)]:
                     tile = Tile((x, y), TILE_SIZE, val)
                     self.visible_sprites.add(tile)
@@ -307,7 +324,7 @@ class Level:
             self.is_night = False
 
         self.current_darkness = target_alpha
-        self.dark_overlay.set_alpha(self.current_darkness)
+        self.small_overlay.set_alpha(self.current_darkness)
 
     def spawn_night_enemies(self) -> None:
         """Spawns enemies from queue during night time."""
@@ -562,7 +579,8 @@ class Level:
         self.visible_sprites.custom_draw(self.player.sprite, show_player=not is_menu)
 
         if self.current_darkness > 0:
-            self.display_surface.blit(self.dark_overlay, (0, 0))
+            self.dark_overlay_scaled.set_alpha(self.current_darkness)
+            self.display_surface.blit(self.dark_overlay_scaled, (0, 0))
 
         self.rain.update()
         self.rain.draw()
@@ -577,9 +595,23 @@ class Level:
         if self.check_game_over():
             return
 
-        self.enemies.update(self.tiles, self.player.sprite)
-        self.bullets.update(self.tiles)
-        self.player.sprite.update(self.tiles, self.create_bullet)
+        # only check collisions for tiles that are currently on screen + margin
+        screen_w = self.display_surface.get_width()
+        cam_x = self.visible_sprites.offset.x
+
+        # calculate start and end columns for the camera view
+        start_col = int(cam_x // TILE_SIZE) - 2
+        end_col = int((cam_x + screen_w) // TILE_SIZE) + 2
+
+        active_tiles = pygame.sprite.Group()
+        for col in range(start_col, end_col + 1):
+            if col in self.tiles_by_col:
+                active_tiles.add(self.tiles_by_col[col])
+
+        self.enemies.update(self.tiles_by_col, self.player.sprite)
+        self.bullets.update(active_tiles)
+        self.player.sprite.update(active_tiles, self.create_bullet)
+
         self.towers.update(self.enemies)
 
         # bullet collisions with enemies
