@@ -41,7 +41,8 @@ class Player(pygame.sprite.Sprite):
         self.hit_time = 0
         self.is_dead = False
 
-        self.money = 30
+        self.money = 0
+        self.score = 0
 
         # upgrades
         self.damage = 20
@@ -156,7 +157,10 @@ class Player(pygame.sprite.Sprite):
             self.regen_upgrade_cost = int(self.regen_upgrade_cost * 1.5)
 
         if just_pressed_q:
-            if self.money >= self.quick_heal_cost and self.current_health < self.max_health:
+            if (
+                self.money >= self.quick_heal_cost
+                and self.current_health < self.max_health
+            ):
                 self.money -= self.quick_heal_cost
                 self.current_health = self.max_health
 

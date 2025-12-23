@@ -9,6 +9,8 @@ class Menu:
         self.state = "MAIN"
         self.volume = 0.5
         self.mouse_pressed_prev = False
+        self.current_score = 0
+        self.best_score = 0
 
         self.buttons = {
             "MAIN": [
@@ -29,6 +31,10 @@ class Menu:
         self.display_surface.blit(overlay, (0, 0))
 
         if self.state == "MAIN":
+            score_text = (
+                f"Current Score: {self.current_score}   Best Score: {self.best_score}"
+            )
+            self.draw_text(score_text, 100, self.small_font, color="Yellow")
             self.draw_buttons(self.buttons["MAIN"])
         elif self.state == "CREDITS":
             self.draw_text("CREDITS", 100)
@@ -38,7 +44,9 @@ class Menu:
             self.draw_buttons(self.buttons["CREDITS"])
         elif self.state == "CONTROLS":
             self.draw_text("CONTROLS", 100)
-            self.draw_text("A/D - move | SHIFT - sprint | SPACE - jump", 250, self.small_font)
+            self.draw_text(
+                "A/D - move | SHIFT - sprint | SPACE - jump", 250, self.small_font
+            )
             self.draw_text("Mouse Click - shoot", 320, self.small_font)
             self.draw_text("E - upgrade gun | C - upgrade regen", 390, self.small_font)
             self.draw_buttons(self.buttons["CONTROLS"])
@@ -49,10 +57,10 @@ class Menu:
             self.draw_text("use Up/Down arrows", 320, self.small_font)
             self.draw_buttons(self.buttons["SOUND"])
 
-    def draw_text(self, text, y, font=None):
+    def draw_text(self, text, y, font=None, color="White"):
         if not font:
             font = self.font
-        surf = font.render(text, True, "White")
+        surf = font.render(text, True, color)
         rect = surf.get_rect(center=(self.display_surface.get_width() // 2, y))
         self.display_surface.blit(surf, rect)
 
@@ -69,6 +77,11 @@ class Menu:
             color = "yellow" if rect.collidepoint(mx, my) else "white"
             surf = self.small_font.render(text, True, color)
             self.display_surface.blit(surf, surf.get_rect(center=rect.center))
+
+    def update_resume_state(self, is_resumable):
+        action = "PLAY_GAME"
+        text = "RESUME" if is_resumable else "PLAY"
+        self.buttons["MAIN"][0] = (text, action)
 
     def handle_input(self):
         keys = pygame.key.get_pressed()

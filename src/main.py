@@ -1,5 +1,4 @@
 import pygame
-
 import os
 
 from level import Level
@@ -38,6 +37,31 @@ pygame.mixer.music.load(music_path)
 pygame.mixer.music.set_volume(0.5)
 pygame.mixer.music.play(-1)
 
+SCORE_FILE = os.path.join("assets", "score")
+
+
+def load_high_score():
+    if not os.path.exists(SCORE_FILE):
+        return 0
+    try:
+        with open(SCORE_FILE, "r") as f:
+            return int(f.read())
+    except ValueError:
+        return 0
+
+
+def save_high_score(score):
+    try:
+        with open(SCORE_FILE, "w") as f:
+            f.write(str(score))
+    except IOError:
+        print("Could not save high score")
+
+
+best_score = load_high_score()
+session_start_best_score = best_score
+has_started = False
+
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -69,11 +93,35 @@ while True:
     draw_bg(screen, bg_3, bg_3_x, bg_3_y, bg_w, screen_w)
     draw_bg(screen, bg_4, bg_4_x, bg_4_y, bg_w, screen_w)
 
+    if level.player.sprite:
+        current = level.player.sprite.score
+        if current > best_score:
+            best_score = current
+            save_high_score(best_score)
+
+        if current > session_start_best_score and not level.hs_celebrated_this_run:
+            level.trigger_highscore_celebration()
+
     if game_state == "MENU":
         level.run(is_menu=True)
+        if level.player.sprite:
+            menu.current_score = level.player.sprite.score
+        menu.best_score = best_score
+
+        is_alive = False
+        if level.player.sprite:
+            is_alive = not level.player.sprite.is_dead
+
+        menu.update_resume_state(has_started and is_alive)
+
         action = menu.handle_input()
         if action == "PLAY":
+            if level.player.sprite and level.player.sprite.is_dead:
+                level.setup_level(level.level_data)
+                session_start_best_score = best_score
+
             game_state = "PLAYING"
+            has_started = True
         elif action == "QUIT":
             pygame.quit()
             raise SystemExit

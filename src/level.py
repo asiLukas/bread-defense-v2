@@ -65,6 +65,11 @@ class Level:
         self.show_celebration = False
         self.celebration_timer = 0
 
+        # High score celebration logic
+        self.show_hs_celebration = False
+        self.hs_celebration_timer = 0
+        self.hs_celebrated_this_run = False
+
         # Overlays
         self.dark_overlay = pygame.Surface(self.display_surface.get_size())
         self.dark_overlay.fill((10, 10, 35))  # deep blue/black night tint
@@ -135,6 +140,10 @@ class Level:
         self.is_night = False
         self.show_celebration = True
         self.celebration_timer = CELEBRATION_DURATION
+
+        self.show_hs_celebration = False
+        self.hs_celebration_timer = 0
+        self.hs_celebrated_this_run = False
 
         self.night_enemy_queue = []
         self.wave_generated = False
@@ -210,6 +219,11 @@ class Level:
         bullet = Bullet(x, y, direction, surf, damage, gravity)
         self.bullets.add(bullet)
         self.visible_sprites.add(bullet)
+
+    def trigger_highscore_celebration(self):
+        self.show_hs_celebration = True
+        self.hs_celebration_timer = CELEBRATION_DURATION
+        self.hs_celebrated_this_run = True
 
     def generate_night_queue(self):
         self.night_enemy_queue = []
@@ -464,6 +478,25 @@ class Level:
                 self.display_surface.blit(big_shadow, big_shadow_rect)
                 self.display_surface.blit(big_text, big_rect)
 
+        # High Score Celebration
+        if self.show_hs_celebration:
+            self.hs_celebration_timer -= 1
+            if self.hs_celebration_timer <= 0:
+                self.show_hs_celebration = False
+            else:
+                msg = "NEW HIGH SCORE!"
+                big_text = self.font.render(msg, True, (0, 255, 255))  # Cyan color
+                big_rect = big_text.get_rect(
+                    center=(screen_w // 2, screen_h // 2 - 200)
+                )
+
+                big_shadow = self.font.render(msg, True, (0, 0, 0))
+                big_shadow_rect = big_rect.copy()
+                big_shadow_rect.center = (screen_w // 2 + 4, screen_h // 2 - 196)
+
+                self.display_surface.blit(big_shadow, big_shadow_rect)
+                self.display_surface.blit(big_text, big_rect)
+
     def check_game_over(self):
         player = self.player.sprite
         if player.is_dead:
@@ -535,6 +568,7 @@ class Level:
                         # enemy killed!
                         reward = random.randint(10, 20)
                         self.player.sprite.money += reward
+                        self.player.sprite.score += reward
 
         # enemy collisions with player
         hits = pygame.sprite.spritecollide(self.player.sprite, self.enemies, False)
