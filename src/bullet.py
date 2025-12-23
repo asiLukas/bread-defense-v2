@@ -1,8 +1,30 @@
+# @generated "partially" Gemini: Added docstrings and type annotations
 import pygame
 
 
 class Bullet(pygame.sprite.Sprite):
-    def __init__(self, x, y, direction, surf, damage=10, gravity=0):
+    """
+    Represents a projectile fired by the player or towers.
+    """
+
+    def __init__(
+        self,
+        x: int,
+        y: int,
+        direction: int,
+        surf: pygame.Surface,
+        damage: int = 10,
+        gravity: float = 0,
+    ) -> None:
+        """
+        Args:
+            x: Spawn X coordinate.
+            y: Spawn Y coordinate.
+            direction: 1 for right, -1 for left.
+            surf: Image surface for the bullet.
+            damage: Damage dealt on impact.
+            gravity: Vertical acceleration applied per frame.
+        """
         super().__init__()
         self.z = 2
 
@@ -19,14 +41,17 @@ class Bullet(pygame.sprite.Sprite):
         self.damage = damage
 
         self.gravity = gravity
-        self.vy = 0
+        self.vy: float = 0
         if self.gravity > 0:
-            self.vy = -6
+            self.vy = -6  # Initial upward velocity for arced shots
 
         self.spawn_time = pygame.time.get_ticks()
         self.life_time = 1500
 
-    def update(self, tiles):
+    def update(self, tiles: pygame.sprite.Group) -> None:
+        """
+        Moves the bullet and checks for collisions with walls.
+        """
         self.rect.x += self.direction * self.speed
 
         if self.gravity > 0:

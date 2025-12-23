@@ -1,17 +1,24 @@
+# @generated "partially" Gemini: Added docstrings and type annotations
 import random
+from typing import List
 
 import pygame
 
 
 class Rain:
-    def __init__(self, surface):
+    """
+    Manages and renders rain particles directly on the surface.
+    """
+
+    def __init__(self, surface: pygame.Surface) -> None:
         self.display_surface = surface
         self.width = surface.get_width()
         self.height = surface.get_height()
-        self.drops = []
+        self.drops: List[List[float]] = []  # [x, y, length, speed, color_tuple]
         self.create_drops()
 
-    def create_drops(self):
+    def create_drops(self) -> None:
+        """Initializes a set of rain drops."""
         for _ in range(20):
             x = random.randint(0, self.width)
             y = random.randint(-self.height, self.height)
@@ -24,8 +31,8 @@ class Rain:
 
             self.drops.append([x, y, length, speed, color])
 
-    def update(self):
-        """Moves drops down."""
+    def update(self) -> None:
+        """Moves drops down and resets them when they leave the screen."""
         for drop in self.drops:
             drop[1] += drop[3]  # y += speed
 
@@ -36,7 +43,8 @@ class Rain:
                 # randomize speed slightly on reset
                 drop[3] = random.randint(4, 9)
 
-    def draw(self):
+    def draw(self) -> None:
+        """Draws the rain drops as lines."""
         for drop in self.drops:
             x, y, length, _, color = drop
 

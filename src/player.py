@@ -1,11 +1,20 @@
+# @generated "partially" Gemini: Added docstrings and type annotations
 import pygame
 import os
+from typing import Optional, Callable, Dict, List
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, scale_factor=None):
+    """
+    The main character controlled by the user. Handles movement, shooting, health, and upgrades.
+    """
+
+    def __init__(
+        self, pos_x: int, pos_y: int, scale_factor: Optional[float] = None
+    ) -> None:
         super().__init__()
         self.z = 2
+        self.animations: Dict[str, List[pygame.Surface]] = {}
         self.import_character_assets(scale_factor)
 
         # Load bullet assets
@@ -31,7 +40,7 @@ class Player(pygame.sprite.Sprite):
         # sprint & Stamina
         self.is_sprinting = False
         self.max_stamina = 300
-        self.current_stamina = self.max_stamina
+        self.current_stamina: float = self.max_stamina
 
         # health
         self.max_health = 100
@@ -57,10 +66,7 @@ class Player(pygame.sprite.Sprite):
         self.shoot_cooldown = 400
         self.last_shoot_time = 0
 
-        # double tap logic
-        self.last_tap_time = 0
-        self.last_tap_key = None
-        self.double_tap_threshold = 250
+        # inputs
         self.previous_keys = pygame.key.get_pressed()
 
         # states
@@ -75,7 +81,8 @@ class Player(pygame.sprite.Sprite):
 
         self.last_update_time = pygame.time.get_ticks()
 
-    def import_character_assets(self, scale):
+    def import_character_assets(self, scale: Optional[float]) -> None:
+        """Loads animation frames from folders."""
         self.animations = {"idle": [], "run": []}
 
         for animation in self.animations.keys():
@@ -105,7 +112,8 @@ class Player(pygame.sprite.Sprite):
             except FileNotFoundError:
                 print(f"Error: Folder not found at {full_path}")
 
-    def get_input(self, create_bullet_callback):
+    def get_input(self, create_bullet_callback: Callable) -> None:
+        """Checks keyboard/mouse input for movement, actions, and upgrades."""
         if self.is_dead:
             return
 
@@ -178,7 +186,8 @@ class Player(pygame.sprite.Sprite):
         if keys[pygame.K_SPACE] and self.direction.y == 0:
             self.jump()
 
-    def get_damage(self, amount):
+    def get_damage(self, amount: int) -> None:
+        """Reduces health and applies invincibility and knockback."""
         if not self.invincible and not self.is_dead:
             if self.hit_sound:
                 self.hit_sound.play()
@@ -191,12 +200,14 @@ class Player(pygame.sprite.Sprite):
             if self.current_health <= 0:
                 self.kill_player()  # Trigger Death
 
-    def kill_player(self):
+    def kill_player(self) -> None:
+        """Handles player death state."""
         self.current_health = 0
         self.is_dead = True
         self.direction.x = 0
 
-    def manage_stamina(self):
+    def manage_stamina(self) -> None:
+        """Drains stamina when sprinting, regenerates otherwise."""
         if self.is_sprinting:
             self.current_stamina -= 1.5
             if self.current_stamina <= 0:
@@ -207,7 +218,8 @@ class Player(pygame.sprite.Sprite):
             if self.current_stamina < self.max_stamina:
                 self.current_stamina += 2
 
-    def passive_regeneration(self):
+    def passive_regeneration(self) -> None:
+        """Regenerates health over time if upgrade is purchased."""
         if self.regen_level > 0 and not self.is_dead:
             current_time = pygame.time.get_ticks()
             if current_time - self.last_regen_time >= 1000:
@@ -220,21 +232,23 @@ class Player(pygame.sprite.Sprite):
 
                 self.last_regen_time = current_time
 
-    def invincibility_timer(self):
+    def invincibility_timer(self) -> None:
+        """Disables invincibility after the duration expires."""
         if self.invincible:
             current_time = pygame.time.get_ticks()
             if current_time - self.hit_time >= self.invincibility_duration:
                 self.invincible = False
                 self.image.set_alpha(255)
 
-    def jump(self):
+    def jump(self) -> None:
         self.direction.y = self.jump_speed
 
-    def apply_gravity(self):
+    def apply_gravity(self) -> None:
         self.direction.y += self.gravity
         self.rect.y += self.direction.y
 
-    def check_horizontal_collisions(self, tiles):
+    def check_horizontal_collisions(self, tiles: pygame.sprite.Group) -> None:
+        """Handles collisions on the X axis."""
         self.rect.x += self.direction.x * self.speed
 
         for tile in tiles:
@@ -246,7 +260,8 @@ class Player(pygame.sprite.Sprite):
                     elif self.direction.x < 0:  # left
                         self.rect.left = tile.rect.right
 
-    def check_vertical_collisions(self, tiles):
+    def check_vertical_collisions(self, tiles: pygame.sprite.Group) -> None:
+        """Handles collisions on the Y axis (gravity)."""
         self.apply_gravity()
 
         for tile in tiles:
@@ -259,7 +274,8 @@ class Player(pygame.sprite.Sprite):
                         self.rect.top = tile.rect.bottom
                         self.direction.y = 0
 
-    def get_status(self):
+    def get_status(self) -> None:
+        """Updates the animation state based on movement."""
         if self.direction.x != 0:
             if self.status != "run":
                 self.frame_index = 0
@@ -267,7 +283,8 @@ class Player(pygame.sprite.Sprite):
         else:
             self.status = "idle"
 
-    def animate(self):
+    def animate(self) -> None:
+        """Updates the sprite image based on the current frame index."""
         animation = self.animations[self.status]
         current_time = pygame.time.get_ticks()
 
@@ -302,7 +319,10 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.midbottom = previous_feet_position
 
-    def draw_bars(self, surface, offset_x, offset_y):
+    def draw_bars(
+        self, surface: pygame.Surface, offset_x: float, offset_y: float
+    ) -> None:
+        """Draws health and stamina bars above the player."""
         if self.is_dead:
             return
         bar_width = 50
@@ -336,7 +356,10 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.rect(surface, st_color, st_fill_rect)
         pygame.draw.rect(surface, (0, 0, 0), st_bg_rect, 1)
 
-    def update(self, tiles, create_bullet_callback):
+    def update(
+        self, tiles: pygame.sprite.Group, create_bullet_callback: Callable
+    ) -> None:
+        """Main update loop for the player."""
         self.get_input(create_bullet_callback)
         self.manage_stamina()
         self.passive_regeneration()

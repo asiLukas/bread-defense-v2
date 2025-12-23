@@ -1,10 +1,11 @@
+# @generated "partially" Gemini: Added docstrings and type annotations
 import pygame
 import os
 
 from level import Level
 from menu import Menu
 from settings import GAME_HEIGHT
-from utils import tower_defense_map, load_bg, draw_bg
+from utils import tower_defense_map, load_bg, draw_bg, load_high_score, save_high_score
 
 pygame.init()
 monitor_info = pygame.display.Info()
@@ -36,27 +37,6 @@ music_path = os.path.join("assets", "sound", "main_music.wav")
 pygame.mixer.music.load(music_path)
 pygame.mixer.music.set_volume(0.5)
 pygame.mixer.music.play(-1)
-
-SCORE_FILE = os.path.join("assets", "score")
-
-
-def load_high_score():
-    if not os.path.exists(SCORE_FILE):
-        return 0
-    try:
-        with open(SCORE_FILE, "r") as f:
-            return int(f.read())
-    except ValueError:
-        return 0
-
-
-def save_high_score(score):
-    try:
-        with open(SCORE_FILE, "w") as f:
-            f.write(str(score))
-    except IOError:
-        print("Could not save high score")
-
 
 best_score = load_high_score()
 session_start_best_score = best_score

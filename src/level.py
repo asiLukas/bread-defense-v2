@@ -1,5 +1,8 @@
+# @generated "partially" Gemini: Added docstrings and type annotations
 import os
 import random
+from typing import List, Tuple, Any, Optional
+
 import pygame
 import particlepy.particle
 import particlepy.shape
@@ -25,7 +28,11 @@ from settings import (
 
 
 class Level:
-    def __init__(self, level_data, surface):
+    """
+    Manages the game world, including entities, day/night cycle, and game logic.
+    """
+
+    def __init__(self, level_data: List[str], surface: pygame.Surface) -> None:
         self.display_surface = surface
 
         self.visible_sprites = CameraGroup()
@@ -43,7 +50,7 @@ class Level:
         self.map_height = len(level_data) * TILE_SIZE
 
         # wave management
-        self.night_enemy_queue = []
+        self.night_enemy_queue: List[Tuple[str, float, float]] = []
         self.wave_generated = False
         self.spawn_cooldown = 120
 
@@ -75,12 +82,12 @@ class Level:
         self.dark_overlay.fill((10, 10, 35))  # deep blue/black night tint
 
         self.spawn_timer = 0
-        self.spawn_cooldown = 120
 
         # Interaction
         self.mouse_pressed_prev = False
 
-    def generate_cloud_cache(self):
+    def generate_cloud_cache(self) -> List[pygame.Surface]:
+        """Pre-renders cloud surfaces to improve performance."""
         cache = []
         particle_sys = particlepy.particle.ParticleSystem()
 
@@ -117,7 +124,8 @@ class Level:
 
         return cache
 
-    def setup_level(self, layout):
+    def setup_level(self, layout: List[str]) -> None:
+        """Parses the level map and creates sprite objects."""
         self.visible_sprites.empty()
         self.tiles.empty()
         self.enemies.empty()
@@ -215,17 +223,28 @@ class Level:
             self.clouds.add(cloud)
             self.visible_sprites.add(cloud)
 
-    def create_bullet(self, x, y, direction, surf, damage=10, gravity=0):
+    def create_bullet(
+        self,
+        x: int,
+        y: int,
+        direction: int,
+        surf: pygame.Surface,
+        damage: int = 10,
+        gravity: float = 0,
+    ) -> None:
+        """Callback function to create a bullet from player or tower."""
         bullet = Bullet(x, y, direction, surf, damage, gravity)
         self.bullets.add(bullet)
         self.visible_sprites.add(bullet)
 
-    def trigger_highscore_celebration(self):
+    def trigger_highscore_celebration(self) -> None:
+        """Enables the 'New High Score' overlay."""
         self.show_hs_celebration = True
         self.hs_celebration_timer = CELEBRATION_DURATION
         self.hs_celebrated_this_run = True
 
-    def generate_night_queue(self):
+    def generate_night_queue(self) -> None:
+        """Prepares the wave of enemies for the current night."""
         self.night_enemy_queue = []
         day = self.day_count
 
@@ -246,7 +265,8 @@ class Level:
         self.spawn_cooldown = max(20, total_spawn_time // num_enemies)
         self.spawn_timer = self.spawn_cooldown
 
-    def day_night_cycle(self):
+    def day_night_cycle(self) -> None:
+        """Updates the game time and handles day/night transitions."""
         prev_day_index = self.day_timer // DAY_CYCLE_LENGTH
 
         self.day_timer += 1
@@ -289,7 +309,8 @@ class Level:
         self.current_darkness = target_alpha
         self.dark_overlay.set_alpha(self.current_darkness)
 
-    def spawn_night_enemies(self):
+    def spawn_night_enemies(self) -> None:
+        """Spawns enemies from queue during night time."""
         if self.is_night and not self.player.sprite.is_dead:
             self.spawn_timer += 1
             if self.spawn_timer >= self.spawn_cooldown:
@@ -319,7 +340,8 @@ class Level:
                     self.enemies.add(enemy)
                     self.visible_sprites.add(enemy)
 
-    def handle_interaction(self):
+    def handle_interaction(self) -> Optional[Any]:
+        """Handles mouse clicks for buying/repairing towers."""
         mouse_pos = pygame.mouse.get_pos()
         # adjust mouse pos for camera offset
         world_x = mouse_pos[0] + self.visible_sprites.offset.x
@@ -380,7 +402,8 @@ class Level:
         self.mouse_pressed_prev = mouse_pressed
         return hovered_obj
 
-    def draw_ui(self, hovered_obj=None):
+    def draw_ui(self, hovered_obj: Optional[Any] = None) -> None:
+        """Renders user interface (money, tooltips, celebrations)."""
         screen_w, screen_h = self.display_surface.get_size()
 
         money_text = f"${self.player.sprite.money}"
@@ -497,7 +520,8 @@ class Level:
                 self.display_surface.blit(big_shadow, big_shadow_rect)
                 self.display_surface.blit(big_text, big_rect)
 
-    def check_game_over(self):
+    def check_game_over(self) -> bool:
+        """Checks player status and displays Game Over screen if dead."""
         player = self.player.sprite
         if player.is_dead:
             overlay = pygame.Surface(self.display_surface.get_size())
@@ -529,7 +553,8 @@ class Level:
             return True
         return False
 
-    def run(self, is_menu=False):
+    def run(self, is_menu: bool = False) -> None:
+        """Main game loop for the level."""
         if not is_menu:
             self.day_night_cycle()
             self.spawn_night_enemies()

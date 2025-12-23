@@ -1,9 +1,21 @@
+# @generated "partially" Gemini: Added docstrings and type annotations
 import pygame
 import os
+from typing import Tuple, Callable
 
 
 class Tower(pygame.sprite.Sprite):
-    def __init__(self, pos, tower_type, flip_x, create_bullet_callback):
+    """
+    Active defense tower that shoots at enemies.
+    """
+
+    def __init__(
+        self,
+        pos: Tuple[int, int],
+        tower_type: str,
+        flip_x: bool,
+        create_bullet_callback: Callable,
+    ) -> None:
         super().__init__()
         self.z = 1
 
@@ -11,7 +23,7 @@ class Tower(pygame.sprite.Sprite):
         self.damage = 0
         self.cooldown = 0
         self.range = 400
-        self.bullet_gravity = 0
+        self.bullet_gravity = 0.0
         self.bullet_offset = (0, 0)
         self.bullet_surf = None
 
@@ -20,6 +32,7 @@ class Tower(pygame.sprite.Sprite):
         self.max_level = 5
         self.upgrade_cost = 150
 
+        # Tower stats configuration
         if tower_type == "200":
             asset_name = "cannon.png"
             self.damage = 30
@@ -71,7 +84,10 @@ class Tower(pygame.sprite.Sprite):
         self.create_bullet = create_bullet_callback
         self.last_shot_time = pygame.time.get_ticks()
 
-    def update(self, enemies):
+    def update(self, enemies: pygame.sprite.Group) -> None:
+        """
+        Finds the closest enemy and shoots if cooldown is ready.
+        """
         current_time = pygame.time.get_ticks()
 
         if current_time - self.last_shot_time >= self.cooldown:
@@ -92,7 +108,8 @@ class Tower(pygame.sprite.Sprite):
                     self.last_shot_time = current_time
                     break
 
-    def shoot(self):
+    def shoot(self) -> None:
+        """Calculates spawn position and triggers the bullet creation callback."""
         ox, oy = self.bullet_offset
         scaled_ox = ox * 4
         scaled_oy = oy * 4
@@ -105,16 +122,18 @@ class Tower(pygame.sprite.Sprite):
         else:
             spawn_x = self.rect.left + scaled_ox
 
-        self.create_bullet(
-            spawn_x,
-            spawn_y,
-            self.direction,
-            self.bullet_surf,
-            self.damage,
-            self.bullet_gravity,
-        )
+        if self.bullet_surf:
+            self.create_bullet(
+                spawn_x,
+                spawn_y,
+                self.direction,
+                self.bullet_surf,
+                self.damage,
+                self.bullet_gravity,
+            )
 
-    def upgrade(self):
+    def upgrade(self) -> None:
+        """Increases tower stats and upgrade cost."""
         if self.level < self.max_level:
             self.level += 1
             self.damage = int(self.damage * 1.3)

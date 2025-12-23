@@ -1,20 +1,27 @@
+# @generated "partially" Gemini: Added docstrings and type annotations
 import pygame
 import os
+from typing import Optional, Tuple, Dict, List, Any
 
 
 class Enemy(pygame.sprite.Sprite):
+    """
+    Represents an enemy entity with simple AI behavior (patrol/chase).
+    """
+
     def __init__(
         self,
-        pos_x,
-        pos_y,
-        enemy_variant="enemy01",
-        scale_factor=None,
-        health_mult=1.0,
-        damage_mult=1.0,
-        facing_right=True,
-    ):
+        pos_x: int,
+        pos_y: int,
+        enemy_variant: str = "enemy01",
+        scale_factor: Optional[float] = None,
+        health_mult: float = 1.0,
+        damage_mult: float = 1.0,
+        facing_right: bool = True,
+    ) -> None:
         super().__init__()
         self.z = 1
+        self.animations: Dict[str, List[pygame.Surface]] = {}
         self.import_assets(enemy_variant, scale_factor)
 
         # animation
@@ -40,6 +47,7 @@ class Enemy(pygame.sprite.Sprite):
         self.sight_range = 400
         self.is_jumping_type = False
 
+        # variant configs
         if "enemy01" in enemy_variant:
             self.walk_speed = 5
             self.chase_speed = 8
@@ -87,7 +95,8 @@ class Enemy(pygame.sprite.Sprite):
 
         self.last_update_time = pygame.time.get_ticks()
 
-    def import_assets(self, variant, scale):
+    def import_assets(self, variant: str, scale: Optional[float]) -> None:
+        """Loads run animation assets for the enemy."""
         self.animations = {"run": []}
         full_path = os.path.join("assets", variant, "run")
         try:
@@ -96,7 +105,7 @@ class Enemy(pygame.sprite.Sprite):
                 img_path = os.path.join(full_path, file)
                 image = pygame.image.load(img_path).convert_alpha()
 
-                # force transparent
+                # force transparent corner fix
                 corner_color = image.get_at((0, 0))
                 image.set_colorkey(corner_color)
 
@@ -113,16 +122,17 @@ class Enemy(pygame.sprite.Sprite):
             surf.fill("red")
             self.animations["run"].append(surf)
 
-    def apply_gravity(self):
+    def apply_gravity(self) -> None:
         self.direction.y += self.gravity
         self.hitbox.y += self.direction.y
 
-    def jump(self):
+    def jump(self) -> None:
         if self.on_ground:
             self.direction.y = self.jump_speed
             self.on_ground = False
 
-    def check_vertical_collisions(self, tiles):
+    def check_vertical_collisions(self, tiles: pygame.sprite.Group) -> None:
+        """Handles gravity and floor collision."""
         self.apply_gravity()
 
         # assume not on ground until proven otherwise
@@ -139,7 +149,8 @@ class Enemy(pygame.sprite.Sprite):
                         self.hitbox.top = tile.rect.bottom
                         self.direction.y = 0
 
-    def check_ledge(self, tiles):
+    def check_ledge(self, tiles: pygame.sprite.Group) -> bool:
+        """Checks if there is ground ahead to prevent falling off edges during patrol."""
         if self.direction.y != 0:
             return True
 
@@ -158,7 +169,8 @@ class Enemy(pygame.sprite.Sprite):
                     return True
         return False
 
-    def get_player_data(self, player):
+    def get_player_data(self, player: Any) -> Tuple[float, float, float]:
+        """Calculates distance and direction vector to the player."""
         enemy_center = self.rect.center
         player_center = player.rect.center
 
@@ -168,7 +180,8 @@ class Enemy(pygame.sprite.Sprite):
 
         return dist, dx, dy
 
-    def behavior(self, player):
+    def behavior(self, player: Any) -> None:
+        """Updates AI state (Idle/Chase) based on player position."""
         dist, dx, dy = self.get_player_data(player)
 
         if dist < self.sight_range:
@@ -196,7 +209,8 @@ class Enemy(pygame.sprite.Sprite):
         if self.is_jumping_type and self.on_ground:
             self.jump()
 
-    def move_and_check_walls(self, tiles):
+    def move_and_check_walls(self, tiles: pygame.sprite.Group) -> None:
+        """Handles X-axis movement and wall collisions."""
         self.hitbox.x += self.direction.x * self.speed
 
         for tile in tiles:
@@ -229,7 +243,8 @@ class Enemy(pygame.sprite.Sprite):
                     self.direction.x *= -1
                     self.facing_right = not self.facing_right
 
-    def animate(self):
+    def animate(self) -> None:
+        """Updates sprite frame based on animation state."""
         animation = self.animations["run"]
         current_time = pygame.time.get_ticks()
 
@@ -252,7 +267,10 @@ class Enemy(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.midbottom = self.hitbox.midbottom
 
-    def draw_bars(self, surface, offset_x, offset_y):
+    def draw_bars(
+        self, surface: pygame.Surface, offset_x: float, offset_y: float
+    ) -> None:
+        """Draws a health bar above the enemy if damaged."""
         if self.current_health < self.max_health:
             bar_width = 40
             bar_height = 5
@@ -271,14 +289,16 @@ class Enemy(pygame.sprite.Sprite):
             pygame.draw.rect(surface, (138, 43, 226), fill_rect)
             pygame.draw.rect(surface, (0, 0, 0), bg_rect, 1)
 
-    def get_damage(self, amount):
+    def get_damage(self, amount: int) -> bool:
+        """Reduces health and returns True if the enemy died."""
         self.current_health -= amount
         if self.current_health <= 0:
             self.kill()
             return True
         return False
 
-    def update(self, tiles, player):
+    def update(self, tiles: pygame.sprite.Group, player: Any) -> None:
+        """Main update loop."""
         self.behavior(player)
         self.move_and_check_walls(tiles)
         self.check_vertical_collisions(tiles)

@@ -1,8 +1,14 @@
+# @generated "partially" Gemini: Added docstrings and type annotations
 import pygame
+from typing import Optional, List, Tuple
 
 
 class Menu:
-    def __init__(self, surface, font_path):
+    """
+    Handles the game menu states, rendering, and input.
+    """
+
+    def __init__(self, surface: pygame.Surface, font_path: str) -> None:
         self.display_surface = surface
         self.font = pygame.font.Font(font_path, 60)
         self.small_font = pygame.font.Font(font_path, 30)
@@ -25,7 +31,8 @@ class Menu:
             "SOUND": [("BACK", "MAIN")],
         }
 
-    def draw(self):
+    def draw(self) -> None:
+        """Renders the current menu state."""
         overlay = pygame.Surface(self.display_surface.get_size(), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 120))
         self.display_surface.blit(overlay, (0, 0))
@@ -57,14 +64,22 @@ class Menu:
             self.draw_text("use Up/Down arrows", 320, self.small_font)
             self.draw_buttons(self.buttons["SOUND"])
 
-    def draw_text(self, text, y, font=None, color="White"):
+    def draw_text(
+        self,
+        text: str,
+        y: int,
+        font: Optional[pygame.font.Font] = None,
+        color: str = "White",
+    ) -> None:
+        """Helper to draw centered text."""
         if not font:
             font = self.font
         surf = font.render(text, True, color)
         rect = surf.get_rect(center=(self.display_surface.get_width() // 2, y))
         self.display_surface.blit(surf, rect)
 
-    def draw_buttons(self, button_list):
+    def draw_buttons(self, button_list: List[Tuple[str, str]]) -> None:
+        """Helper to draw a list of buttons."""
         mx, my = pygame.mouse.get_pos()
         start_y = 450
         for i, (text, _) in enumerate(button_list):
@@ -78,12 +93,14 @@ class Menu:
             surf = self.small_font.render(text, True, color)
             self.display_surface.blit(surf, surf.get_rect(center=rect.center))
 
-    def update_resume_state(self, is_resumable):
+    def update_resume_state(self, is_resumable: bool) -> None:
+        """Updates the main menu button text based on game state."""
         action = "PLAY_GAME"
         text = "RESUME" if is_resumable else "PLAY"
         self.buttons["MAIN"][0] = (text, action)
 
-    def handle_input(self):
+    def handle_input(self) -> Optional[str]:
+        """Handles menu navigation and returns action triggers (PLAY/QUIT)."""
         keys = pygame.key.get_pressed()
         if self.state == "SOUND":
             if keys[pygame.K_DOWN]:
