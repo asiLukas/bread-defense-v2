@@ -6,7 +6,6 @@ This project is a MVP for the continuation of my original game, [Bread Defense](
 ## ✨ About the Project
 - 📚 Developed for the **BI-PYT course** I've enrolled in the 25/26 winter semester
 
-
 ## 🎯 Goals
 - _nice_ live underground world with day/night cycles
 - 6 enemy types
@@ -29,3 +28,6 @@ cd src/
 python main.py
 ```
 - NOTE: anything over python 3.8 will probably work fine
+
+## Other Notes
+- I'm aware of the performance bottlenecks like the backgrounds, enemy rendering, ui rendering etc... still, this is outside of scope of this MVP
